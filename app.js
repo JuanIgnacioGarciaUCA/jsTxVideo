@@ -104,7 +104,8 @@ btnConnect.addEventListener('click', () => {
 
     // Iniciamos la llamada enviando nuestro stream (si existe) 
     // o un stream vacío si solo queremos recibir.
-    const call = peer.call(remoteId, localStream || new MediaStream());
+    //const call = peer.call(remoteId, localStream || new MediaStream());
+    const call = peer.call(remoteId, new MediaStream());
     
     call.on('stream', (remoteStream) => {
         console.log('Recibiendo stream remoto');
