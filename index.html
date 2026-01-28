@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsTxVideo - IP Webcam</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <style>
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; }
+        video { width: 100%; height: auto; max-height: 80vh; background: #222; }
+        .controls { padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; border-radius: 5px; border: none; background: #2196F3; color: white; }
+    </style>
+</head>
+<body>
+    <h1>jsTxVideo</h1>
+    <video id="webcam" autoplay playsinline></video>
+    <div class="controls">
+        <button id="btnStart">Iniciar Cámara</button>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Registrar el Service Worker para que sea PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
