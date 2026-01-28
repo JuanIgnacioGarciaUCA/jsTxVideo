@@ -45,14 +45,18 @@ peer.on('call', (call) => {
     
     // Respondemos a la llamada. 
     // Si tenemos la cámara activada (localStream), la enviamos.
+    console.log("Enviando nuestro stream local a la llamada");
+    console.log(localStream);
     call.answer(localStream); 
     
     // Cuando recibimos el flujo de video del que nos llama (si él también envía)
+    /*
     call.on('stream', (remoteStream) => {
         videoElement.srcObject = remoteStream;
         // Quitamos el efecto espejo si estamos viendo a otro
         videoElement.style.transform = "scaleX(1)"; 
     });
+    */
 });
 
 /**
