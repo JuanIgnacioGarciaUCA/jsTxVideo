@@ -3,26 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>jsTxVideo - IP Webcam</title>
+    <title>jsTxVideo - P2P Stream</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2196F3">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: white; font-family: sans-serif; text-align: center; }
-        video { width: 100%; height: auto; max-height: 80vh; background: #222; }
-        .controls { padding: 20px; }
-        button { padding: 10px 20px; font-size: 16px; border-radius: 5px; border: none; background: #2196F3; color: white; }
+        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; }
+        video { width: 100%; max-width: 500px; background: #000; margin-top: 10px; border-radius: 8px; }
+        .panel { padding: 15px; background: #333; margin: 10px; border-radius: 8px; }
+        button { padding: 12px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-start { background: #4CAF50; color: white; }
+        .btn-connect { background: #2196F3; color: white; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 200px; }
+        #my-id { color: #ffeb3b; font-family: monospace; }
     </style>
 </head>
 <body>
     <h1>jsTxVideo</h1>
-    <video id="webcam" autoplay playsinline></video>
-    <div class="controls">
-        <button id="btnStart">Iniciar Cámara</button>
+
+    <div class="panel">
+        <p>Tu ID: <span id="my-id">Cargando...</span></p>
+        <button id="btnStart" class="btn-start">1. Iniciar Cámara</button>
     </div>
+
+    <div class="panel">
+        <input type="text" id="remote-id" placeholder="ID del otro móvil">
+        <button id="btnConnect" class="btn-connect">2. Ver Video Remoto</button>
+    </div>
+
+    <video id="webcam" autoplay playsinline></video>
 
     <script src="app.js"></script>
     <script>
-        // Registrar el Service Worker para que sea PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
