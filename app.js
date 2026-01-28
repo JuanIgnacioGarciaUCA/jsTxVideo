@@ -100,13 +100,15 @@ btnConnect.addEventListener('click', () => {
     }
 
     console.log('Llamando a: ' + remoteId);
-    
+    alert('Llamando a: ' + remoteId);
+
     // Iniciamos la llamada enviando nuestro stream (si existe) 
     // o un stream vacío si solo queremos recibir.
     const call = peer.call(remoteId, localStream || new MediaStream());
     
     call.on('stream', (remoteStream) => {
         console.log('Recibiendo stream remoto');
+        alert('Recibiendo stream remoto');
         videoElement.srcObject = remoteStream;
         // Quitamos el efecto espejo para ver el video remoto correctamente
         videoElement.style.transform = "scaleX(1)";
