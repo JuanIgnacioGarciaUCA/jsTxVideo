@@ -1,5 +1,5 @@
 /**
- * jsTxVideo - Versión Estable
+ * jsTxVideo - VERSIÓN ULTRA-ESTABLE
  */
 
 const videoElement = document.getElementById('webcam');
@@ -11,30 +11,23 @@ const qrContainer = document.getElementById('qrcode');
 
 let localStream = null;
 
-// 1. Inicializar PeerJS con servidores STUN de Google
-const peer = new Peer({
+// 1. Configuración de Peer con servidores STUN públicos
+const peer = new Peer(undefined, {
+    debug: 2,
     config: {
         'iceServers': [
             { url: 'stun:stun.l.google.com:19302' },
             { url: 'stun:stun1.l.google.com:19302' }
-        ],
-        'sdpSemantics': 'unified-plan'
+        ]
     }
 });
 
-// Manejo de errores de conexión
+// Manejo de errores
 peer.on('error', (err) => {
-    console.error('Error tipo:', err.type);
-    if (err.type === 'peer-unavailable') {
-        alert('El ID del emisor no existe o se ha desconectado.');
-    } else if (err.type === 'network') {
-        alert('Error de red. Revisa tu conexión.');
-    } else {
-        alert('Error: ' + err.type);
-    }
+    console.error('Error de PeerJS:', err.type);
+    alert("Error: " + err.type);
 });
 
-// Cuando mi ID está listo
 peer.on('open', (id) => {
     console.log('Mi ID es:', id);
     myIdDisplay.innerText = id;
@@ -42,7 +35,7 @@ peer.on('open', (id) => {
     revisarUrlParaConexion();
 });
 
-// --- EMISOR (El que tiene la cámara) ---
+// --- EMISOR ---
 btnStart.addEventListener('click', async () => {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({
@@ -51,76 +44,78 @@ btnStart.addEventListener('click', async () => {
         });
         videoElement.srcObject = localStream;
         videoElement.play();
-        btnStart.innerText = "CÁMARA TRANSMITIENDO ✅";
+        btnStart.innerText = "CÁMARA OK ✅";
         btnStart.style.background = "#2e7d32";
     } catch (err) {
-        alert("Error de cámara: " + err);
+        alert("Permiso de cámara denegado o no encontrada.");
     }
 });
 
-// El emisor recibe la llamada y responde
+// Responder a llamadas
 peer.on('call', (call) => {
     console.log("Recibiendo llamada de:", call.peer);
+    // Si no hay stream local, respondemos con un stream vacío pero válido
+    call.answer(localStream || new MediaStream());
     
-    // Si no hemos activado la cámara, avisamos pero contestamos igual 
-    // para establecer el canal de datos.
-    if (!localStream) {
-        console.warn("Respondiendo sin video local...");
-    }
-    
-    call.answer(localStream); // Enviamos el stream (sea null o video)
-
     call.on('stream', (remoteStream) => {
-        mostrarVideo(remoteStream);
+        if (remoteStream.getVideoTracks().length > 0) {
+            videoElement.srcObject = remoteStream;
+            videoElement.play();
+        }
     });
 });
 
-// --- RECEPTOR (El que ve) ---
+// --- RECEPTOR ---
 btnConnect.addEventListener('click', () => {
     const remoteId = remoteIdInput.value.trim();
     
-    if (!remoteId) return alert("Introduce el ID");
-    if (!peer.id) return alert("Aún no tienes un ID asignado. Espera un segundo.");
+    if (!remoteId) return alert("Introduce el ID del emisor");
+    if (remoteId === peer.id) return alert("No puedes llamarte a ti mismo. Usa otro dispositivo.");
 
-    console.log("Intentando llamar a:", remoteId);
-    
+    console.log("Iniciando llamada a:", remoteId);
+
     /**
-     * IMPORTANTE: Para evitar el error "No se pudo crear la llamada",
-     * pasamos un stream vacío si no tenemos cámara.
+     * SOLUCIÓN AL ERROR:
+     * PeerJS a veces falla si el segundo parámetro es un MediaStream totalmente vacío.
+     * Si no tenemos cámara, creamos un "Dummy Stream" con un audio silencioso 
+     * para que la conexión WebRTC tenga algo que negociar.
      */
-    const dummyStream = localStream || new MediaStream();
-    const call = peer.call(remoteId, dummyStream);
+    if (!localStream) {
+        // Creamos un audio context para generar un track de silencio
+        const ctx = new AudioContext();
+        const oscillator = ctx.createOscillator();
+        const dst = oscillator.connect(ctx.createMediaStreamDestination());
+        oscillator.start();
+        const dummyStream = dst.stream;
+        
+        realizarLlamada(remoteId, dummyStream);
+    } else {
+        realizarLlamada(remoteId, localStream);
+    }
+});
 
+function realizarLlamada(id, stream) {
+    const call = peer.call(id, stream);
+    
     if (!call) {
-        alert("Error crítico: No se pudo crear el objeto de llamada.");
+        console.error("La función peer.call devolvió undefined");
+        alert("Error al crear la llamada. Reintenta en 2 segundos.");
         return;
     }
 
     call.on('stream', (remoteStream) => {
-        console.log("¡STREAM RECIBIDO!");
-        mostrarVideo(remoteStream);
+        console.log("¡Stream recibido!");
+        videoElement.srcObject = remoteStream;
+        videoElement.style.transform = "scaleX(1)";
+        videoElement.play();
     });
 
-    // Si a los 10 segundos no hay video, avisar
-    setTimeout(() => {
-        if (!videoElement.srcObject) {
-            console.log("No se recibe video. ¿Ha pulsado el emisor el botón verde?");
-        }
-    }, 10000);
-});
-
-function mostrarVideo(stream) {
-    // Solo asignamos si el stream tiene tracks de video
-    if (stream.getVideoTracks().length > 0) {
-        videoElement.srcObject = stream;
-        videoElement.style.transform = "scaleX(1)";
-        videoElement.play().catch(e => {
-            videoElement.muted = true;
-            videoElement.play();
-        });
-    }
+    call.on('error', (err) => {
+        console.error("Error en la comunicación:", err);
+    });
 }
 
+// --- AUXILIARES ---
 function generarQR(id) {
     qrContainer.innerHTML = "";
     const urlConexion = `${window.location.origin}${window.location.pathname}?connect=${id}`;
