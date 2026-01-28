@@ -3,39 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>jsTxVideo - P2P Stream</title>
+    <title>jsTxVideo - PWA Streamer</title>
+    
+    <!-- Configuración PWA -->
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Librerías Externas -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <style>
-        body { margin: 0; background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; }
-        video { width: 100%; max-width: 500px; background: #000; margin-top: 10px; border-radius: 8px; }
-        .panel { padding: 15px; background: #333; margin: 10px; border-radius: 8px; }
-        button { padding: 12px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-start { background: #4CAF50; color: white; }
-        .btn-connect { background: #2196F3; color: white; }
-        input { padding: 10px; border-radius: 5px; border: none; width: 200px; }
-        #my-id { color: #ffeb3b; font-family: monospace; }
+        :root {
+            --primary: #2196F3;
+            --success: #4CAF50;
+            --dark: #1a1a1a;
+            --panel: #2d2d2d;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--dark);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            background: var(--primary);
+            width: 100%;
+            padding: 10px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .panel {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        #qrcode {
+            background: white;
+            padding: 10px;
+            display: inline-block;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        #qrcode img {
+            display: block;
+        }
+
+        .id-text {
+            font-family: monospace;
+            color: #ffeb3b;
+            font-size: 1.2rem;
+            word-break: break-all;
+        }
+
+        video {
+            width: 100%;
+            background: #000;
+            border-radius: 12px;
+            margin-top: 10px;
+            transform: scaleX(-1); /* Efecto espejo para la cámara frontal */
+        }
+
+        /* Corregir efecto espejo para cámara trasera */
+        video.rear-camera {
+            transform: scaleX(1);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:active { opacity: 0.8; }
+
+        .btn-start { background: var(--success); color: white; }
+        .btn-connect { background: var(--primary); color: white; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #111;
+            color: white;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: #bbb;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>jsTxVideo</h1>
 
-    <div class="panel">
-        <p>Tu ID: <span id="my-id">Cargando...</span></p>
-        <button id="btnStart" class="btn-start">1. Iniciar Cámara</button>
+    <header>
+        <h1>jsTxVideo</h1>
+    </header>
+
+    <div class="container">
+        <!-- Panel Emisor -->
+        <div class="panel">
+            <strong>EMISOR:</strong>
+            <p>Tu ID: <span id="my-id" class="id-text">Cargando...</span></p>
+            <div id="qrcode"></div>
+            <button id="btnStart" class="btn-start">ACTIVAR MI CÁMARA</button>
+            <p class="status">Pulsa aquí para empezar a transmitir</p>
+        </div>
+
+        <!-- Panel Receptor -->
+        <div class="panel">
+            <strong>RECEPTOR:</strong>
+            <input type="text" id="remote-id" placeholder="ID del emisor o escanea QR">
+            <button id="btnConnect" class="btn-connect">VER VIDEO REMOTO</button>
+            <p class="status">Pega el ID o escanea el QR del otro móvil</p>
+        </div>
+
+        <!-- Visualizador de Video -->
+        <video id="webcam" autoplay playsinline></video>
     </div>
 
-    <div class="panel">
-        <input type="text" id="remote-id" placeholder="ID del otro móvil">
-        <button id="btnConnect" class="btn-connect">2. Ver Video Remoto</button>
-    </div>
-
-    <video id="webcam" autoplay playsinline></video>
-
+    <!-- Carga del script principal -->
     <script src="app.js"></script>
+
     <script>
+        // Registro del Service Worker para PWA
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registrado', reg))
+                    .catch(err => console.log('Error registrando SW', err));
+            });
         }
     </script>
 </body>
