@@ -110,7 +110,7 @@ btnConnect.addEventListener('click', () => {
     //const call = peer.call(remoteId, localStream || new MediaStream());
     //localStream=new MediaStream();
     const call = peer.call(remoteId);
-    
+    console.log(call);
     call.on('stream', (remoteStream) => {
         console.log('Recibiendo stream remoto');
         videoElement.srcObject = remoteStream;
