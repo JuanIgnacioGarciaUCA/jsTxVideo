@@ -6,7 +6,22 @@ const remoteIdInput = document.getElementById('remote-id');
 const qrContainer = document.getElementById('qrcode');
 
 let localStream = null;
-const peer = new Peer(); 
+
+// CONFIGURACIÓN ICE: Ayuda a conectar a través de firewalls y routers
+const peer = new Peer({
+    config: {
+        'iceServers': [
+            { url: 'stun:stun.l.google.com:19302' },
+            { url: 'stun:stun1.l.google.com:19302' }
+        ]
+    }
+});
+
+// Ver errores globales de Peer
+peer.on('error', (err) => {
+    console.error('Error en PeerJS:', err.type);
+    alert('Error de conexión: ' + err.type);
+});
 
 peer.on('open', (id) => {
     myIdDisplay.innerText = id;
@@ -22,32 +37,23 @@ btnStart.addEventListener('click', async () => {
             audio: false
         });
         videoElement.srcObject = localStream;
-        // Forzamos la reproducción
         videoElement.play();
-        
         btnStart.innerText = "CÁMARA TRANSMITIENDO ✅";
         btnStart.style.background = "#2e7d32";
-        if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
     } catch (err) {
         alert("Error al abrir cámara: " + err);
     }
 });
 
-// El emisor recibe la llamada
+// Respuesta del emisor
 peer.on('call', (call) => {
-    console.log("Recibiendo llamada de:", call.peer);
+    console.log("Recibiendo llamada... respondiendo con stream:", !!localStream);
     
-    if (!localStream) {
-        alert("¡Alguien intenta conectar pero no has activado tu cámara!");
-        // Opcional: podrías llamar a btnStart.click() aquí
-    }
+    // Si el emisor no ha activado la cámara, enviamos null o nada
+    call.answer(localStream); 
 
-    // Respondemos con nuestro stream (aunque sea null, pero lo ideal es que ya exista)
-    call.answer(localStream);
-
-    // Si el receptor también envía video (poco probable en este esquema, pero por si acaso)
     call.on('stream', (remoteStream) => {
-        mostrarVideoRemoto(remoteStream);
+        mostrarVideo(remoteStream);
     });
 });
 
@@ -56,33 +62,39 @@ btnConnect.addEventListener('click', () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Introduce el ID del emisor");
 
-    console.log("Llamando al emisor...");
+    console.log("Iniciando llamada a:", remoteId);
     
-    // El receptor inicia la llamada. 
-    // Enviamos un MediaStream vacío para activar el canal.
-    const call = peer.call(remoteId, new MediaStream());
+    // IMPORTANTE: Si no tenemos cámara propia, no pasamos segundo argumento
+    const call = localStream ? peer.call(remoteId, localStream) : peer.call(remoteId);
+
+    if (!call) {
+        console.error("No se pudo crear la llamada");
+        return;
+    }
 
     call.on('stream', (remoteStream) => {
-        console.log("¡Stream remoto recibido con éxito!");
-        mostrarVideoRemoto(remoteStream);
+        console.log("¡STREAM RECIBIDO!");
+        mostrarVideo(remoteStream);
     });
 
-    call.on('error', (err) => {
-        console.error("Error en la llamada:", err);
-    });
+    // Detectar si la conexión falló
+    setTimeout(() => {
+        if (!videoElement.srcObject) {
+            console.warn("La conexión tarda demasiado... posible bloqueo de Firewall.");
+        }
+    }, 5000);
 });
 
-// Función auxiliar para asegurar que el video se muestra y reproduce
-function mostrarVideoRemoto(stream) {
+function mostrarVideo(stream) {
     videoElement.srcObject = stream;
     videoElement.style.transform = "scaleX(1)";
-    
-    // IMPORTANTE: Algunos navegadores bloquean el play automático
-    videoElement.play().catch(e => {
-        console.warn("El autoplay fue bloqueado, intentando con mute...", e);
-        videoElement.muted = true;
-        videoElement.play();
-    });
+    videoElement.onloadedmetadata = () => {
+        videoElement.play().catch(e => {
+            console.log("Play bloqueado, intentando mute...");
+            videoElement.muted = true;
+            videoElement.play();
+        });
+    };
 }
 
 function generarQR(id) {
