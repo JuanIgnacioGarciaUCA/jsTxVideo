@@ -1,5 +1,5 @@
 /**
- * jsTxVideo - VERSIÓN DE DIAGNÓSTICO
+ * jsTxVideo - VERSIÓN FINAL (FIX RECEPTOR)
  */
 
 const videoElement = document.getElementById('webcam');
@@ -9,9 +9,9 @@ const myIdDisplay = document.getElementById('my-id');
 const remoteIdInput = document.getElementById('remote-id');
 const qrContainer = document.getElementById('qrcode');
 
-// Creamos un área de log en pantalla para ver qué pasa en el móvil
+// Log en pantalla
 const logArea = document.createElement('div');
-logArea.style = "background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; height: 100px; overflow-y: scroll; width: 100%; text-align: left;";
+logArea.style = "background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; height: 80px; overflow-y: scroll; width: 100%; text-align: left;";
 document.body.appendChild(logArea);
 
 function log(msg) {
@@ -22,10 +22,15 @@ function log(msg) {
 
 let localStream = null;
 
-// Configuración con servidores STUN
+// Configuración con varios servidores STUN para saltar Firewalls
 const peer = new Peer(undefined, {
-    debug: 2,
-    config: { 'iceServers': [{ url: 'stun:stun.l.google.com:19302' }] }
+    config: {
+        'iceServers': [
+            { url: 'stun:stun.l.google.com:19302' },
+            { url: 'stun:stun1.l.google.com:19302' },
+            { url: 'stun:stun2.l.google.com:19302' }
+        ]
+    }
 });
 
 peer.on('open', (id) => {
@@ -35,77 +40,78 @@ peer.on('open', (id) => {
     revisarUrlParaConexion();
 });
 
-peer.on('error', (err) => log("ERROR PEER: " + err.type));
+peer.on('error', (err) => log("ERROR: " + err.type));
 
-// --- EMISOR ---
+// --- LÓGICA EMISOR ---
 btnStart.addEventListener('click', async () => {
     try {
-        log("Solicitando cámara...");
         localStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "environment" },
             audio: false
         });
         videoElement.srcObject = localStream;
         videoElement.play();
-        log("Cámara activa ✅");
+        log("Cámara lista ✅");
         btnStart.style.background = "#2e7d32";
     } catch (err) {
         log("Error cámara: " + err);
     }
 });
 
-// El EMISOR recibe la llamada
 peer.on('call', (call) => {
-    log("📞 Llamada entrante de: " + call.peer);
+    log("📞 Llamada entrante...");
+    // Aunque no tengamos stream, respondemos para abrir el canal
+    call.answer(localStream);
     
-    if (localStream) {
-        log("Respondiendo con video...");
-        call.answer(localStream);
-    } else {
-        log("¡OJO! No has activado cámara. Respondiendo vacío.");
-        call.answer();
-    }
-
     call.on('stream', (remoteStream) => {
-        log("Recibiendo stream (bidireccional)...");
+        log("Recibiendo stream del que llama...");
         mostrarVideo(remoteStream);
     });
 });
 
-// --- RECEPTOR ---
+// --- LÓGICA RECEPTOR ---
 btnConnect.addEventListener('click', () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Falta ID");
     
-    log("Llamando a: " + remoteId);
+    log("Conectando a: " + remoteId + "...");
     
-    // El receptor llama. IMPORTANTE: Enviamos un stream vacío pero con track para forzar la conexión
+    // El receptor llama. IMPORTANTE: Pasamos un stream vacío pero estructurado
     const call = peer.call(remoteId, new MediaStream());
 
-    if (!call) {
-        log("Error: No se pudo crear la llamada");
-        return;
-    }
-
     call.on('stream', (remoteStream) => {
-        log("¡STREAM RECIBIDO DEL EMISOR! 🎥");
+        log("¡¡STREAM RECIBIDO!! 🎥");
         mostrarVideo(remoteStream);
     });
 
-    call.on('error', (err) => log("Error en llamada: " + err));
+    // Si después de 5 segundos no hay stream, puede ser el Firewall
+    setTimeout(() => {
+        if (!videoElement.srcObject) log("⚠️ Sin datos... ¿estás en el mismo WiFi?");
+    }, 5000);
 });
 
 function mostrarVideo(stream) {
+    log("Configurando elemento de video...");
     videoElement.srcObject = stream;
     videoElement.style.transform = "scaleX(1)";
-    videoElement.play().catch(e => {
-        log("Error autoplay, activando mute...");
-        videoElement.muted = true;
-        videoElement.play();
-    });
+    
+    // Obligatorio para navegadores modernos
+    videoElement.muted = true; 
+    videoElement.setAttribute('autoplay', '');
+    videoElement.setAttribute('playsinline', '');
+    
+    const playPromise = videoElement.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            log("Reproducción iniciada con éxito 🍿");
+        }).catch(error => {
+            log("Autoplay bloqueado. Haz clic en el video.");
+            // Si falla, añadimos un evento para que al tocar la pantalla arranque
+            document.body.addEventListener('click', () => videoElement.play(), {once: true});
+        });
+    }
 }
 
-// --- AUXILIARES ---
 function generarQR(id) {
     qrContainer.innerHTML = "";
     const url = `${window.location.origin}${window.location.pathname}?connect=${id}`;
