@@ -162,3 +162,30 @@ function revisarUrlParaConexion() {
     const id = params.get('connect');
     if (id) remoteIdInput.value = id;
 }
+
+
+//////////////
+
+const btnStealth = document.getElementById('btnStealth');
+const blackOverlay = document.getElementById('blackOverlay');
+
+// Función para activar el modo pantalla negra
+btnStealth.addEventListener('click', () => {
+    if (!localStream) return alert("Primero activa la cámara");
+    
+    // Entrar en pantalla completa (opcional, pero recomendado)
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+    }
+    
+    // Mostrar la capa negra
+    blackOverlay.style.display = 'block';
+    log("Modo ahorro activado. Píxeles apagados.");
+});
+
+// Salir del modo pantalla negra con doble clic
+blackOverlay.addEventListener('dblclick', () => {
+    blackOverlay.style.display = 'none';
+    if (document.exitFullscreen) document.exitFullscreen();
+    log("Modo ahorro desactivado.");
+});

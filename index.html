@@ -128,6 +128,14 @@
     </style>
 </head>
 <body>
+    <!-- Capa negra que cubrirá todo -->
+    <div id="blackOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:10000; color:#222; text-align:center; padding-top:50%;">
+        <p>Transmitiendo en modo ahorro...</p>
+        <p style="font-size: 0.8rem;">(Haz doble clic para volver)</p>
+    </div>
+
+    <!-- En el panel del emisor añade este botón -->
+    <button id="btnStealth" class="btn-stealth" style="background:#444; color:white;">MODO AHORRO (PANTALLA NEGRA)</button>
 
     <header>
         <h1>jsTxVideo.18</h1>
