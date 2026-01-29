@@ -93,7 +93,7 @@ btnConnect.addEventListener('click', async () => {
         // Opción A: Audio dummy (la que más estabilidad da en 2026)
         receptorStream = await navigator.mediaDevices.getUserMedia({
             //audio: true,   // ← crea un track de audio "silencio"
-            video: false
+            video: true
         });
         log("Stream dummy de audio creado para negociación");
 
