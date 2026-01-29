@@ -84,6 +84,7 @@ peer.on('call', (call) => {
 });
 
 // --- LÓGICA RECEPTOR (el que pulsa btnConnect) ---
+/*
 btnConnect.addEventListener('click', async () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Falta ID");
@@ -127,6 +128,66 @@ btnConnect.addEventListener('click', async () => {
             log("⚠️ No hay vídeo después de 8s... ¿mismo WiFi o firewall?");
         }
     }, 8000);
+});
+*/
+btnConnect.addEventListener('click', async () => {
+    const remoteId = remoteIdInput.value.trim();
+    if (!remoteId) return alert("Falta ID");
+
+    log("Conectando a: " + remoteId + "...");
+
+    let receptorStream;
+
+    try {
+        // Intentamos pedir cámara (esto ayuda a la estabilidad si existe)
+        receptorStream = await navigator.mediaDevices.getUserMedia({
+            video: true
+        });
+        log("Cámara del receptor detectada y usada.");
+    } catch (err) {
+        log("PC sin cámara o permiso denegado. Creando stream virtual negro...");
+        
+        // --- TRUCO: Crear un Stream de video "falso" usando un Canvas ---
+        const canvas = document.createElement('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Capturamos el dibujo del canvas como un stream de video a 1 frame por segundo
+        receptorStream = canvas.captureStream(1); 
+        
+        // También añadimos un track de audio silencioso por si el receptor lo espera
+        try {
+            const audioCtx = new AudioContext();
+            const destination = audioCtx.createMediaStreamDestination();
+            const silentTrack = destination.stream.getAudioTracks()[0];
+            if (silentTrack) receptorStream.addTrack(silentTrack);
+        } catch(e) { console.log("No se pudo crear audio silencioso"); }
+    }
+
+    // Iniciamos la llamada con nuestro stream (sea real o virtual)
+    const call = peer.call(remoteId, receptorStream);
+
+    if (!call) {
+        log("Error: No se pudo crear el objeto de llamada.");
+        return;
+    }
+
+    call.on('stream', (remoteStream) => {
+        log("¡¡STREAM RECIBIDO DEL EMISOR!! 🎥");
+        mostrarVideo(remoteStream);
+    });
+
+    call.on('error', err => log("Error en conexión: " + err));
+    
+    // Limpieza al cerrar
+    call.on('close', () => {
+        if (receptorStream) {
+            receptorStream.getTracks().forEach(t => t.stop());
+        }
+    });
 });
 
 function mostrarVideo(stream) {
