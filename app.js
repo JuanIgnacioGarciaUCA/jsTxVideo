@@ -25,10 +25,19 @@ let localStream = null;
 // Configuración con varios servidores STUN para saltar Firewalls
 const peer = new Peer(undefined, {
     config: {
-        'iceServers': [
-            { url: 'stun:stun.l.google.com:19302' },
-            { url: 'stun:stun1.l.google.com:19302' },
-            { url: 'stun:stun2.l.google.com:19302' }
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun.stunprotocol.org' },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
         ]
     }
 });
@@ -59,35 +68,62 @@ btnStart.addEventListener('click', async () => {
 });
 
 peer.on('call', (call) => {
-    log("📞 Llamada entrante...");
-    // Aunque no tengamos stream, respondemos para abrir el canal
-    call.answer(localStream);
-    
+    log("📞 Llamada entrante de " + call.peer);
+    call.answer(localStream);  // tu stream con vídeo
+
     call.on('stream', (remoteStream) => {
-        log("Recibiendo stream del que llama...");
-        mostrarVideo(remoteStream);
+        log("Recibí stream del receptor (puede ser solo audio o vacío)");
+        // Si quieres ver también el del receptor (aunque sea negro o audio)
+        // mostrarVideo(remoteStream); 
     });
+
+    call.on('error', err => log("Error en call: " + err));
 });
 
-// --- LÓGICA RECEPTOR ---
-btnConnect.addEventListener('click', () => {
+// --- LÓGICA RECEPTOR (el que pulsa btnConnect) ---
+btnConnect.addEventListener('click', async () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Falta ID");
-    
+
     log("Conectando a: " + remoteId + "...");
-    
-    // El receptor llama. IMPORTANTE: Pasamos un stream vacío pero estructurado
-    const call = peer.call(remoteId, new MediaStream());
+
+    let receptorStream;
+
+    try {
+        // Opción A: Audio dummy (la que más estabilidad da en 2026)
+        receptorStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,   // ← crea un track de audio "silencio"
+            video: false
+        });
+        log("Stream dummy de audio creado para negociación");
+
+        // Opción B: Si no quieres micrófono, prueba esto (funciona en muchos casos)
+        // receptorStream = new MediaStream(); // ← a veces falla, pero con audio:true arriba suele ir
+
+    } catch (err) {
+        log("No se pudo crear stream dummy: " + err);
+        receptorStream = new MediaStream(); // fallback
+    }
+
+    const call = peer.call(remoteId, receptorStream);
 
     call.on('stream', (remoteStream) => {
-        log("¡¡STREAM RECIBIDO!! 🎥");
+        log("¡¡STREAM RECIBIDO DEL EMISOR!! 🎥");
         mostrarVideo(remoteStream);
     });
 
-    // Si después de 5 segundos no hay stream, puede ser el Firewall
+    // Limpieza opcional cuando termine la llamada
+    call.on('close', () => {
+        if (receptorStream) {
+            receptorStream.getTracks().forEach(t => t.stop());
+        }
+    });
+
     setTimeout(() => {
-        if (!videoElement.srcObject) log("⚠️ Sin datos... ¿estás en el mismo WiFi?");
-    }, 5000);
+        if (!videoElement.srcObject) {
+            log("⚠️ No hay vídeo después de 8s... ¿mismo WiFi o firewall?");
+        }
+    }, 8000);
 });
 
 function mostrarVideo(stream) {
