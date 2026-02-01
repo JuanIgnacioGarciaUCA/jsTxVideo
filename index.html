@@ -78,12 +78,12 @@
             word-break: break-all;
         }
 
-        video {
+       video {
             width: 100%;
+            max-width: 640px; /* Limita el ancho visual */
+            height: auto;
             background: #000;
-            border-radius: 12px;
-            margin-top: 10px;
-            transform: scaleX(-1); /* Efecto espejo para la cámara frontal */
+            object-fit: cover; /* Esto asegura que el video llene el contenedor sin estirarse */
         }
 
         /* Corregir efecto espejo para cámara trasera */
