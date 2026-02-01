@@ -2,6 +2,17 @@
  * jsTxVideo - VERSIÓN FINAL (FIX RECEPTOR)
  */
 
+// Log en pantalla
+const logArea = document.createElement('div');
+logArea.style = "background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; height: 80px; overflow-y: scroll; width: 100%; text-align: left;";
+document.body.appendChild(logArea);
+
+function log(msg) {
+    logArea.innerHTML += `> ${msg}<br>`;
+    logArea.scrollTop = logArea.scrollHeight;
+    console.log(msg);
+}
+
 let detector;
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx = overlayCanvas.getContext('2d', { willReadFrequently: true });
@@ -29,16 +40,7 @@ const myIdDisplay = document.getElementById('my-id');
 const remoteIdInput = document.getElementById('remote-id');
 const qrContainer = document.getElementById('qrcode');
 
-// Log en pantalla
-const logArea = document.createElement('div');
-logArea.style = "background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; height: 80px; overflow-y: scroll; width: 100%; text-align: left;";
-document.body.appendChild(logArea);
 
-function log(msg) {
-    logArea.innerHTML += `> ${msg}<br>`;
-    logArea.scrollTop = logArea.scrollHeight;
-    console.log(msg);
-}
 
 let localStream = null;
 
