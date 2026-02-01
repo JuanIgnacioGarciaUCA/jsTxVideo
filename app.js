@@ -215,6 +215,8 @@ function mostrarVideo(stream) {
     log("Iniciando flujo con detección...");
     videoElement.srcObject = stream;
     videoElement.muted = true;
+    videoElement.setAttribute('autoplay', '');
+    videoElement.setAttribute('playsinline', '');
     
     videoElement.play().then(() => {
         requestAnimationFrame(processingLoop); // Inicia el bucle de procesamiento
