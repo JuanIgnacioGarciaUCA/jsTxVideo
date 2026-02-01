@@ -55,18 +55,39 @@ peer.on('open', (id) => {
 peer.on('error', (err) => log("ERROR: " + err.type));
 
 // --- LÓGICA EMISOR ---
+// --- LÓGICA EMISOR ---
 btnStart.addEventListener('click', async () => {
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
+        log("Solicitando cámara a 640x480...");
+        
+        const constraints = {
+            video: {
+                // Forzamos la resolución
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                // Aseguramos que mantenga la proporción 4:3
+                aspectRatio: 1.33333,
+                facingMode: "environment" 
+            },
             audio: false
-        });
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        // Verificamos qué resolución nos ha dado el móvil realmente
+        const settings = localStream.getVideoTracks()[0].getSettings();
+        log(`Resolución real: ${settings.width}x${settings.height}`);
+
         videoElement.srcObject = localStream;
         videoElement.play();
-        log("Cámara lista ✅");
+        
+        btnStart.innerText = "CÁMARA OK ✅";
         btnStart.style.background = "#2e7d32";
     } catch (err) {
         log("Error cámara: " + err);
+        alert("No se pudo forzar 640x480. Probando modo automático...");
+        // Fallback por si la cámara no soporta esa resolución exacta
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true });
     }
 });
 
