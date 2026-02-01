@@ -23,7 +23,7 @@ function log(msg) {
 let localStream = null;
 
 // Configuración con varios servidores STUN para saltar Firewalls
-/*
+
 const peer = new Peer(undefined, {
     config: {
         iceServers: [
@@ -41,9 +41,9 @@ const peer = new Peer(undefined, {
             }
         ]
     }
-});*/
+});
 
-const peer = new Peer(); 
+//const peer = new Peer(); 
 
 peer.on('open', (id) => {
     log("Mi ID: " + id);
