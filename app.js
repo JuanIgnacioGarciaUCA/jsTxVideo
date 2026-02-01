@@ -2,6 +2,26 @@
  * jsTxVideo - VERSIÓN FINAL (FIX RECEPTOR)
  */
 
+let detector;
+const overlayCanvas = document.getElementById('overlay');
+const overlayCtx = overlayCanvas.getContext('2d', { willReadFrequently: true });
+
+// 1. Inicializar el detector de AprilTags (Tag36h11 es el estándar)
+async function initAprilTag() {
+    log("Cargando detector de AprilTags...");
+    const AprilTag = await window.AprilTag;
+    detector = await new AprilTag.Detector({
+        family: 'tag36h11', // La familia más común
+        quad_decimate: 2.0, // Aumenta este valor para ganar velocidad (pero pierde precisión)
+        quad_sigma: 0.0,
+        nthreads: 4,
+        decode_sharpening: 0.25
+    });
+    log("Detector AprilTag listo ✅");
+}
+
+initAprilTag();
+
 const videoElement = document.getElementById('webcam');
 const btnStart = document.getElementById('btnStart');
 const btnConnect = document.getElementById('btnConnect');
@@ -104,53 +124,6 @@ peer.on('call', (call) => {
     call.on('error', err => log("Error en call: " + err));
 });
 
-// --- LÓGICA RECEPTOR (el que pulsa btnConnect) ---
-/*
-btnConnect.addEventListener('click', async () => {
-    const remoteId = remoteIdInput.value.trim();
-    if (!remoteId) return alert("Falta ID");
-
-    log("Conectando a: " + remoteId + "...");
-
-    let receptorStream;
-
-    try {
-        // Opción A: Audio dummy (la que más estabilidad da en 2026)
-        receptorStream = await navigator.mediaDevices.getUserMedia({
-            //audio: true,   // ← crea un track de audio "silencio"
-            video: true
-        });
-        log("Stream dummy de audio creado para negociación");
-
-        // Opción B: Si no quieres micrófono, prueba esto (funciona en muchos casos)
-        // receptorStream = new MediaStream(); // ← a veces falla, pero con audio:true arriba suele ir
-
-    } catch (err) {
-        log("No se pudo crear stream dummy: " + err);
-        receptorStream = new MediaStream(); // fallback
-    }
-
-    const call = peer.call(remoteId, receptorStream);
-
-    call.on('stream', (remoteStream) => {
-        log("¡¡STREAM RECIBIDO DEL EMISOR!! 🎥");
-        mostrarVideo(remoteStream);
-    });
-
-    // Limpieza opcional cuando termine la llamada
-    call.on('close', () => {
-        if (receptorStream) {
-            receptorStream.getTracks().forEach(t => t.stop());
-        }
-    });
-
-    setTimeout(() => {
-        if (!videoElement.srcObject) {
-            log("⚠️ No hay vídeo después de 8s... ¿mismo WiFi o firewall?");
-        }
-    }, 8000);
-});
-*/
 btnConnect.addEventListener('click', async () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Falta ID");
@@ -200,6 +173,7 @@ btnConnect.addEventListener('click', async () => {
         log("¡¡STREAM RECIBIDO DEL EMISOR!! 🎥");
         const settings = remoteStream.getVideoTracks()[0].getSettings();
         log(`Video recibido a: ${settings.width}x${settings.height}`);
+        log(settings);
         mostrarVideo(remoteStream);
     });
 
@@ -213,6 +187,7 @@ btnConnect.addEventListener('click', async () => {
     });
 });
 
+/*
 function mostrarVideo(stream) {
     log("Configurando elemento de video...");
     videoElement.srcObject = stream;
@@ -233,7 +208,65 @@ function mostrarVideo(stream) {
             document.body.addEventListener('click', () => videoElement.play(), {once: true});
         });
     }
+}*/
+
+// 2. Modifica la función mostrarVideo para iniciar el bucle de detección
+function mostrarVideo(stream) {
+    log("Iniciando flujo con detección...");
+    videoElement.srcObject = stream;
+    videoElement.muted = true;
+    
+    videoElement.play().then(() => {
+        requestAnimationFrame(processingLoop); // Inicia el bucle de procesamiento
+    });
 }
+// 3. El Bucle de Procesamiento: Dibuja frame -> Detecta -> Dibuja recuadros
+async function processingLoop() {
+    if (!detector || videoElement.paused || videoElement.ended) {
+        requestAnimationFrame(processingLoop);
+        return;
+    }
+
+    // Dibujamos el frame actual del video en el canvas
+    overlayCtx.drawImage(videoElement, 0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    // Extraemos los datos de la imagen
+    const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
+    
+    // Ejecutamos la detección (esto es lo más pesado)
+    const detections = await detector.detect(imageData.data, imageData.width, imageData.height);
+
+    // Dibujamos los resultados
+    if (detections.length > 0) {
+        drawDetections(detections);
+    }
+
+    // Repetimos el bucle
+    requestAnimationFrame(processingLoop);
+}
+// 4. Función para dibujar los recuadros y el ID del tag
+function drawDetections(detections) {
+    overlayCtx.lineWidth = 3;
+    overlayCtx.font = "20px Arial";
+    overlayCtx.fillStyle = "red";
+
+    detections.forEach(det => {
+        // Dibujar bordes del AprilTag
+        overlayCtx.strokeStyle = "lime";
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(det.corners[0].x, det.corners[0].y);
+        overlayCtx.lineTo(det.corners[1].x, det.corners[1].y);
+        overlayCtx.lineTo(det.corners[2].x, det.corners[2].y);
+        overlayCtx.lineTo(det.corners[3].x, det.corners[3].y);
+        overlayCtx.closePath();
+        overlayCtx.stroke();
+
+        // Escribir el ID del tag detectado
+        overlayCtx.fillText(`ID: ${det.id}`, det.center.x, det.center.y);
+    });
+}
+
+
 
 function generarQR(id) {
     qrContainer.innerHTML = "";

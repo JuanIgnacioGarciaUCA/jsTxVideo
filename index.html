@@ -13,6 +13,9 @@
     <!-- Librerías Externas -->
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- En el <head>, añade la librería de AprilTag -->
+    <script src="https://cdn.jsdelivr.net/npm/apriltag@1.1.1/dist/apriltag.min.js"></script>
+
 
     <style>
         :root {
@@ -160,7 +163,11 @@
         </div>
 
         <!-- Visualizador de Video -->
-        <video id="webcam" autoplay playsinline></video>
+        <!--video id="webcam" autoplay playsinline></video-->
+        <div style="position: relative; display: inline-block;">
+            <video id="webcam" autoplay playsinline style="width: 100%; max-width: 640px; display: none;"></video>
+            <canvas id="overlay" width="640" height="480" style="width: 100%; max-width: 640px; background: #000;"></canvas>
+        </div>
     </div>
 
     <!-- Carga del script principal -->
