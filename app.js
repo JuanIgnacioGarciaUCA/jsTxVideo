@@ -219,7 +219,7 @@ function mostrarVideo(stream) {
     videoElement.setAttribute('playsinline', '');
     
     videoElement.play().then(() => {
-        requestAnimationFrame(processingLoop); // Inicia el bucle de procesamiento
+        //requestAnimationFrame(processingLoop); // Inicia el bucle de procesamiento
     });
 }
 // 3. El Bucle de Procesamiento: Dibuja frame -> Detecta -> Dibuja recuadros
