@@ -198,9 +198,9 @@ btnConnect.addEventListener('click', async () => {
 
     call.on('stream', (remoteStream) => {
         log("¡¡STREAM RECIBIDO DEL EMISOR!! 🎥");
-        mostrarVideo(remoteStream);
         const settings = remoteStream.getVideoTracks()[0].getSettings();
         log(`Video recibido a: ${settings.width}x${settings.height}`);
+        mostrarVideo(remoteStream);
     });
 
     call.on('error', err => log("Error en conexión: " + err));
