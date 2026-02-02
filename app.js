@@ -17,19 +17,7 @@ const overlayCanvas = document.getElementById('overlay');
 const overlayCtx = overlayCanvas.getContext('2d', { willReadFrequently: true });
 let apriltagDetector = null;
 
-// 1. Inicializar el detector cuando la librería esté lista
-// La librería 'apriltag.js' crea una función global llamada 'AprilTag'
-/*
-async function cargarDetector() {
-    log("Iniciando carga de WASM para AprilTag...");
-    // Esperamos a que el módulo WASM se cargue (es automático con esta lib)
-    AprilTag({
-        locateFile: (file) => `https://cdn.jsdelivr.net/gh/mabel-sz/apriltag-js@master/${file}`
-    }).then((Module) => {
-        apriltagDetector = Module;
-        log("Detector AprilTag (WASM) listo ✅");
-    });
-}*/
+
 // 1. Inicializar el Detector
 async function cargarDetector() {
     log("Cargando motor WASM de AprilTag...");
@@ -92,7 +80,6 @@ peer.on('open', (id) => {
 
 peer.on('error', (err) => log("ERROR: " + err.type));
 
-// --- LÓGICA EMISOR ---
 // --- LÓGICA EMISOR ---
 btnStart.addEventListener('click', async () => {
     try {
@@ -204,29 +191,6 @@ btnConnect.addEventListener('click', async () => {
         }
     });
 });
-
-/*
-function mostrarVideo(stream) {
-    log("Configurando elemento de video...");
-    videoElement.srcObject = stream;
-    videoElement.style.transform = "scaleX(1)";
-    
-    // Obligatorio para navegadores modernos
-    videoElement.muted = true; 
-    videoElement.setAttribute('autoplay', '');
-    videoElement.setAttribute('playsinline', '');
-    
-    const playPromise = videoElement.play();
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
-            log("Reproducción iniciada con éxito 🍿");
-        }).catch(error => {
-            log("Autoplay bloqueado. Haz clic en el video.");
-            // Si falla, añadimos un evento para que al tocar la pantalla arranque
-            document.body.addEventListener('click', () => videoElement.play(), {once: true});
-        });
-    }
-}*/
 
 // 2. Modifica la función mostrarVideo para que inicie el dibujo
 function mostrarVideo(stream) {
