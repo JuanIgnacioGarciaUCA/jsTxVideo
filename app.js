@@ -34,7 +34,7 @@ async function cargarDetector() {
 async function cargarDetector() {
     log("Cargando motor WASM de AprilTag...");
     
-    detectorInstance = new AprilTag(() => {
+    detectorInstance = new AprilTagWasm(() => {
         // --- LÍNEA CLAVE PARA CAMBIAR LA FAMILIA ---
         // Cambiamos de la predeterminada (tag36h11) a tag16h5
         try {
