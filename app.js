@@ -57,33 +57,37 @@ let detectorReady = false;
 // 4. INICIALIZACIÓN DEL DETECTOR APRILTAG
 // ────────────────────────────────────────────────
 function cargarDetector() {
-    // La librería de ARENA-xr suele registrar "AprilTag" con T mayúscula
-    const Constructor = window.AprilTag || window.Apriltag;
+    // 1. Buscamos la clase en el objeto global window
+    const Constructor = window.AprilTag;
 
-    if (typeof Constructor !== 'function') {
-        log("Esperando librería AprilTag...");
+    if (!Constructor) {
+        // Si no está, es que el .js de la librería aún no ha bajado
+        log("Esperando librería AprilTag (verificando CDN)...");
         setTimeout(cargarDetector, 1000);
         return;
     }
 
-    log("Inicializando motor WASM...");
-    // El constructor recibe un callback cuando el .wasm está listo
-    detectorInstance = new Constructor(() => {
-        log("¡Motor AprilTag cargado! ✓");
-        
-        try {
-            // Configuramos la familia solicitada
-            detectorInstance.set_family("tag16h5"); 
-            log("Familia configurada: tag16h5 🎯");
+    log("Librería detectada. Iniciando motor WASM...");
+
+    try {
+        // 2. Inicializamos el objeto. 
+        // Esta librería espera un callback que se ejecuta cuando el WASM está listo.
+        detectorInstance = new Constructor(() => {
+            log("¡Motor AprilTag cargado con éxito! ✓");
             
-            // Reducimos la resolución interna de análisis para ganar velocidad
-            detectorInstance.set_decimate(2.0);
-            detectorReady = true;
-        } catch(e) {
-            log("Error al configurar familia: " + e.message);
-            detectorReady = true; // Intentar seguir con la default
-        }
-    });
+            try {
+                detectorInstance.set_family("tag16h5"); 
+                log("Familia configurada: tag16h5 🎯");
+                detectorInstance.set_decimate(2.0);
+                detectorReady = true;
+            } catch(e) {
+                log("Error al configurar familia, usando default.");
+                detectorReady = true;
+            }
+        });
+    } catch (err) {
+        log("Error al crear instancia AprilTag: " + err.message);
+    }
 }
 
 cargarDetector();
