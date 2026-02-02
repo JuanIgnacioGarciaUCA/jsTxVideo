@@ -19,6 +19,7 @@ let apriltagDetector = null;
 
 // 1. Inicializar el detector cuando la librería esté lista
 // La librería 'apriltag.js' crea una función global llamada 'AprilTag'
+/*
 async function cargarDetector() {
     log("Iniciando carga de WASM para AprilTag...");
     // Esperamos a que el módulo WASM se cargue (es automático con esta lib)
@@ -28,7 +29,24 @@ async function cargarDetector() {
         apriltagDetector = Module;
         log("Detector AprilTag (WASM) listo ✅");
     });
+}*/
+// 1. Inicializar el Detector
+async function cargarDetector() {
+    log("Cargando motor WASM de AprilTag...");
+    
+    detectorInstance = new Apriltag(() => {
+        // --- LÍNEA CLAVE PARA CAMBIAR LA FAMILIA ---
+        // Cambiamos de la predeterminada (tag36h11) a tag16h5
+        try {
+            detectorInstance.set_family("tag16h5"); 
+            log("Configurado para familia: tag16h5 ✅");
+        } catch(e) {
+            log("Error al cambiar de familia, usando predeterminada.");
+        }
+    });
 }
+
+
 cargarDetector();
 
 const videoElement = document.getElementById('webcam');
