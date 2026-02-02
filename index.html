@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- En el <head>, añade la librería de AprilTag -->
-    <script src="https://cdn.jsdelivr.net/npm/apriltag@1.1.1/dist/apriltag.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mabel-sz/apriltag-js@master/apriltag.js"></script>
 
 
     <style>
@@ -141,7 +141,7 @@
     <button id="btnStealth" class="btn-stealth" style="background:#444; color:white;">MODO AHORRO (PANTALLA NEGRA)</button>
 
     <header>
-        <h1>jsTxVideo.29</h1>
+        <h1>jsTxVideo.30</h1>
     </header>
 
     <div class="container">
@@ -164,9 +164,14 @@
 
         <!-- Visualizador de Video -->
         <!--video id="webcam" autoplay playsinline></video-->
-        <div style="position: relative; display: inline-block;">
-            <video id="webcam" autoplay playsinline style="width: 100%; max-width: 640px; display: none;"></video>
-            <canvas id="overlay" width="640" height="480" style="width: 100%; max-width: 640px; background: #000;"></canvas>
+        <!-- Cambiamos ligeramente el HTML para usar un canvas -->
+        <div class="panel">
+            <div style="position: relative; display: inline-block; width: 100%; max-width: 640px;">
+                <!-- El video estará oculto, solo lo usamos como fuente de datos -->
+                <video id="webcam" autoplay playsinline style="display: none;"></video>
+                <!-- El canvas mostrará el video + los recuadros -->
+                <canvas id="overlay" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px;"></canvas>
+            </div>
         </div>
     </div>
 

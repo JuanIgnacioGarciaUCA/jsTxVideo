@@ -13,25 +13,23 @@ function log(msg) {
     console.log(msg);
 }
 
-let detector;
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx = overlayCanvas.getContext('2d', { willReadFrequently: true });
+let apriltagDetector = null;
 
-// 1. Inicializar el detector de AprilTags (Tag36h11 es el estándar)
-async function initAprilTag() {
-    log("Cargando detector de AprilTags...");
-    const AprilTag = await window.AprilTag;
-    detector = await new AprilTag.Detector({
-        family: 'tag36h11', // La familia más común
-        quad_decimate: 2.0, // Aumenta este valor para ganar velocidad (pero pierde precisión)
-        quad_sigma: 0.0,
-        nthreads: 4,
-        decode_sharpening: 0.25
+// 1. Inicializar el detector cuando la librería esté lista
+// La librería 'apriltag.js' crea una función global llamada 'AprilTag'
+async function cargarDetector() {
+    log("Iniciando carga de WASM para AprilTag...");
+    // Esperamos a que el módulo WASM se cargue (es automático con esta lib)
+    AprilTag({
+        locateFile: (file) => `https://cdn.jsdelivr.net/gh/mabel-sz/apriltag-js@master/${file}`
+    }).then((Module) => {
+        apriltagDetector = Module;
+        log("Detector AprilTag (WASM) listo ✅");
     });
-    log("Detector AprilTag listo ✅");
 }
-
-initAprilTag();
+cargarDetector();
 
 const videoElement = document.getElementById('webcam');
 const btnStart = document.getElementById('btnStart');
@@ -212,52 +210,46 @@ function mostrarVideo(stream) {
     }
 }*/
 
-// 2. Modifica la función mostrarVideo para iniciar el bucle de detección
+// 2. Modifica la función mostrarVideo para que inicie el dibujo
 function mostrarVideo(stream) {
-    log("Iniciando flujo con detección...");
     videoElement.srcObject = stream;
     videoElement.muted = true;
-    videoElement.setAttribute('autoplay', '');
-    videoElement.setAttribute('playsinline', '');
-    
     videoElement.play().then(() => {
-        requestAnimationFrame(processingLoop); // Inicia el bucle de procesamiento
+        log("Procesando video...");
+        requestAnimationFrame(bucleProcesamiento);
     });
 }
-// 3. El Bucle de Procesamiento: Dibuja frame -> Detecta -> Dibuja recuadros
-async function processingLoop() {
-    if (!detector || videoElement.paused || videoElement.ended) {
-        requestAnimationFrame(processingLoop);
-        return;
-    }
 
-    // Dibujamos el frame actual del video en el canvas
+// 3. Bucle principal de análisis
+function bucleProcesamiento() {
+    if (videoElement.paused || videoElement.ended) return;
+
+    // Dibujar el video en el canvas
     overlayCtx.drawImage(videoElement, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-    // Extraemos los datos de la imagen
-    const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
-    
-    // Ejecutamos la detección (esto es lo más pesado)
-    const detections = await detector.detect(imageData.data, imageData.width, imageData.height);
-
-    // Dibujamos los resultados
-    if (detections.length > 0) {
-        drawDetections(detections);
+    // Si el detector ya cargó, analizamos el frame
+    if (apriltagDetector) {
+        const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
+        
+        // La detección requiere una imagen en escala de grises
+        // Algunas versiones de la lib lo hacen interno, otras no. 
+        // Esta versión suele aceptar el buffer RGBA directamente:
+        const detections = apriltagDetector.detect(imageData.data, overlayCanvas.width, overlayCanvas.height);
+        
+        dibujarDetecciones(detections);
     }
 
-    // Repetimos el bucle
-    requestAnimationFrame(processingLoop);
+    requestAnimationFrame(bucleProcesamiento);
 }
-// 4. Función para dibujar los recuadros y el ID del tag
-function drawDetections(detections) {
-    overlayCtx.lineWidth = 3;
-    overlayCtx.font = "20px Arial";
-    overlayCtx.fillStyle = "red";
 
+// 4. Dibujar los recuadros sobre el canvas
+function dibujarDetecciones(detections) {
     detections.forEach(det => {
-        // Dibujar bordes del AprilTag
-        overlayCtx.strokeStyle = "lime";
+        overlayCtx.strokeStyle = "#00ff00";
+        overlayCtx.lineWidth = 4;
         overlayCtx.beginPath();
+        
+        // Dibujar las 4 esquinas
         overlayCtx.moveTo(det.corners[0].x, det.corners[0].y);
         overlayCtx.lineTo(det.corners[1].x, det.corners[1].y);
         overlayCtx.lineTo(det.corners[2].x, det.corners[2].y);
@@ -265,8 +257,13 @@ function drawDetections(detections) {
         overlayCtx.closePath();
         overlayCtx.stroke();
 
-        // Escribir el ID del tag detectado
-        overlayCtx.fillText(`ID: ${det.id}`, det.center.x, det.center.y);
+        // Dibujar el ID del tag
+        overlayCtx.fillStyle = "#ff0000";
+        overlayCtx.font = "bold 20px Arial";
+        overlayCtx.fillText("ID: " + det.id, det.center.x - 20, det.center.y);
+        
+        // Log opcional para consola
+        // console.log(`Tag detectado: ${det.id}`);
     });
 }
 
