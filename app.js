@@ -1,41 +1,43 @@
 /**
- * jsTxVideo - VERSIÓN CORREGIDA para arenaxr/apriltag-js-standalone
- * Familia: tag36h11 (no se puede cambiar sin recompilar WASM)
+ * jsTxVideo - VERSIÓN INTEGRADA 2026
+ * Funcionalidades: PeerJS (P2P), QR Code, Stealth Mode, AprilTag (tag16h5)
  */
 
 // ────────────────────────────────────────────────
-// Logs
+// 1. SISTEMA DE LOGS EN PANTALLA
 // ────────────────────────────────────────────────
 const logArea = document.createElement('div');
 Object.assign(logArea.style, {
-    background: '#000',
+    background: 'rgba(0, 0, 0, 0.8)',
     color: '#0f0',
     fontFamily: 'monospace',
     fontSize: '11px',
-    padding: '8px',
-    height: '90px',
+    padding: '10px',
+    height: '100px',
     overflowY: 'scroll',
     width: '100%',
     position: 'fixed',
     bottom: '0',
     left: '0',
-    zIndex: '9999',
-    boxSizing: 'border-box'
+    zIndex: '10001',
+    boxSizing: 'border-box',
+    pointerEvents: 'none' // Para que no bloquee clics
 });
 document.body.appendChild(logArea);
 
 function log(msg) {
-    logArea.innerHTML += `> ${msg}<br>`;
+    const now = new Date().toLocaleTimeString();
+    logArea.innerHTML += `[${now}] ${msg}<br>`;
     logArea.scrollTop = logArea.scrollHeight;
     console.log("[jsTxVideo]", msg);
 }
 
 // ────────────────────────────────────────────────
-// Elementos DOM
+// 2. REFERENCIAS DOM
 // ────────────────────────────────────────────────
 const videoElement  = document.getElementById('webcam');
 const overlayCanvas = document.getElementById('overlay');
-const overlayCtx    = overlayCanvas?.getContext('2d', { willReadFrequently: true });
+const overlayCtx    = overlayCanvas.getContext('2d', { willReadFrequently: true });
 const btnStart      = document.getElementById('btnStart');
 const btnConnect    = document.getElementById('btnConnect');
 const myIdDisplay   = document.getElementById('my-id');
@@ -45,47 +47,65 @@ const btnStealth    = document.getElementById('btnStealth');
 const blackOverlay  = document.getElementById('blackOverlay');
 
 // ────────────────────────────────────────────────
-// Variables globales
+// 3. VARIABLES GLOBALES
 // ────────────────────────────────────────────────
 let localStream = null;
-let apriltag = null;
+let detectorInstance = null;
 let detectorReady = false;
 
 // ────────────────────────────────────────────────
-// 1. Cargar detector AprilTag
+// 4. INICIALIZACIÓN DEL DETECTOR APRILTAG
 // ────────────────────────────────────────────────
 function cargarDetector() {
-    if (typeof Apriltag !== 'function') {
-        log("ERROR: No se encontró la función global 'Apriltag'");
-        log("→ Verifica que apriltag_wasm.js y apriltag.js se cargaron correctamente");
-        log("→ Revisa pestaña Network (F12) por errores 404 o CORS en .wasm");
+    // La librería de ARENA-xr suele registrar "AprilTag" con T mayúscula
+    const Constructor = window.AprilTag || window.Apriltag;
+
+    if (typeof Constructor !== 'function') {
+        log("Esperando librería AprilTag...");
+        setTimeout(cargarDetector, 1000);
         return;
     }
 
-    log("Inicializando detector AprilTag (familia tag36h11)...");
-
-    apriltag = Apriltag(() => {
-        log("¡Detector AprilTag listo! ✓ (familia: tag36h11)");
-        detectorReady = true;
-
-        // Opcional: configurar algunos parámetros
-        // apriltag.set_max_detections(10);
-        // apriltag.set_return_pose(1);
+    log("Inicializando motor WASM...");
+    // El constructor recibe un callback cuando el .wasm está listo
+    detectorInstance = new Constructor(() => {
+        log("¡Motor AprilTag cargado! ✓");
+        
+        try {
+            // Configuramos la familia solicitada
+            detectorInstance.set_family("tag16h5"); 
+            log("Familia configurada: tag16h5 🎯");
+            
+            // Reducimos la resolución interna de análisis para ganar velocidad
+            detectorInstance.set_decimate(2.0);
+            detectorReady = true;
+        } catch(e) {
+            log("Error al configurar familia: " + e.message);
+            detectorReady = true; // Intentar seguir con la default
+        }
     });
 }
 
-cargarDetector();  // Lanzar inmediatamente
+cargarDetector();
 
 // ────────────────────────────────────────────────
-// PeerJS
+// 5. CONFIGURACIÓN PEERJS (P2P)
 // ────────────────────────────────────────────────
 const peer = new Peer(undefined, {
     config: {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun.stunprotocol.org' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+            { 
+                urls: 'turn:openrelay.metered.ca:80', 
+                username: 'openrelayproject', 
+                credential: 'openrelayproject' 
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:443', 
+                username: 'openrelayproject', 
+                credential: 'openrelayproject' 
+            }
         ]
     }
 });
@@ -97,193 +117,190 @@ peer.on('open', id => {
     revisarUrlParaConexion();
 });
 
-peer.on('error', err => log(`PeerJS error: ${err.type} — ${err.message}`));
+peer.on('error', err => log(`Error PeerJS: ${err.type}`));
 
 // ────────────────────────────────────────────────
-// Emisor: Activar cámara
+// 6. LÓGICA EMISOR (EL MÓVIL)
 // ────────────────────────────────────────────────
-btnStart?.addEventListener('click', async () => {
+btnStart.addEventListener('click', async () => {
     try {
-        log("Solicitando cámara trasera...");
+        log("Abriendo cámara trasera (640x480)...");
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: "environment",
                 width: { ideal: 640 },
                 height: { ideal: 480 }
-            }
+            },
+            audio: false
         });
 
         localStream = stream;
         videoElement.srcObject = stream;
-        await videoElement.play();
+        videoElement.play();
 
-        const settings = stream.getVideoTracks()[0].getSettings();
-        log(`Resolución: ${settings.width}×${settings.height}`);
+        // Wake Lock para evitar que se apague la pantalla
+        if ('wakeLock' in navigator) {
+            await navigator.wakeLock.request('screen');
+            log("WakeLock activo 💡");
+        }
 
-        btnStart.textContent = "CÁMARA ACTIVADA";
-        btnStart.style.backgroundColor = "#4CAF50";
+        btnStart.textContent = "CÁMARA ACTIVADA ✅";
+        btnStart.style.backgroundColor = "#2e7d32";
     } catch (err) {
-        log("Error al obtener cámara: " + err.message);
+        log("Error cámara: " + err.message);
     }
 });
 
-// ────────────────────────────────────────────────
-// Receptor: recibir llamada
-// ────────────────────────────────────────────────
+// El emisor recibe la llamada
 peer.on('call', call => {
-    log(`Llamada entrante de ${call.peer}`);
-    call.answer(localStream);  // puede ser null si no hay cámara local
+    log("📞 Llamada entrante...");
+    call.answer(localStream); // Responde con el video (si existe)
 
     call.on('stream', remoteStream => {
-        log("Stream remoto recibido → mostrando + procesando");
+        // En caso de que el receptor también envíe video
         mostrarVideo(remoteStream);
     });
-
-    call.on('error', err => log("Error en call: " + err));
 });
 
 // ────────────────────────────────────────────────
-// Conectar como receptor → llamar al emisor
+// 7. LÓGICA RECEPTOR (EL PC)
 // ────────────────────────────────────────────────
-btnConnect?.addEventListener('click', async () => {
+btnConnect.addEventListener('click', async () => {
     const remoteId = remoteIdInput.value.trim();
-    if (!remoteId) return alert("Introduce ID del emisor");
+    if (!remoteId) return alert("Introduce el ID del móvil");
 
     log(`Llamando a ${remoteId}...`);
 
-    let localVideoStream;
+    let receptorStream;
     try {
-        localVideoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    } catch {
-        // Fallback: canvas negro
+        // Intentamos usar cámara propia, si no, creamos un stream negro
+        receptorStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (e) {
+        log("PC sin cámara. Creando stream virtual...");
         const canvas = document.createElement('canvas');
         canvas.width = 640; canvas.height = 480;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'black';
-        ctx.fillRect(0, 0, 640, 480);
-        localVideoStream = canvas.captureStream(1);
+        ctx.fillStyle = "black";
+        ctx.fillRect(0,0,640,480);
+        receptorStream = canvas.captureStream(1);
     }
 
-    const call = peer.call(remoteId, localVideoStream);
+    const call = peer.call(remoteId, receptorStream);
 
     call.on('stream', remoteStream => {
-        log("¡Stream del emisor recibido!");
+        log("¡Video recibido del emisor!");
         mostrarVideo(remoteStream);
     });
 
-    call.on('error', err => log("Error en llamada: " + err));
-    call.on('close', () => localVideoStream?.getTracks().forEach(t => t.stop()));
+    call.on('error', err => log("Error en conexión: " + err));
 });
 
 // ────────────────────────────────────────────────
-// Procesamiento de video + AprilTag
+// 8. PROCESAMIENTO Y DIBUJO (APRILTAG)
 // ────────────────────────────────────────────────
 function mostrarVideo(stream) {
     videoElement.srcObject = stream;
     videoElement.muted = true;
-    videoElement.play()
-        .then(() => {
-            log("Video reproduciéndose → iniciando bucle de detección");
-            requestAnimationFrame(bucleProcesamiento);
-        })
-        .catch(e => log("Error al reproducir: " + e.message));
+    
+    videoElement.onloadedmetadata = () => {
+        videoElement.play();
+        log("Iniciando análisis de frames...");
+        requestAnimationFrame(bucleProcesamiento);
+    };
 }
 
 function bucleProcesamiento() {
-    if (videoElement.paused || videoElement.ended || !detectorReady || !overlayCtx) {
-        requestAnimationFrame(bucleProcesamiento);
-        return;
-    }
+    if (videoElement.paused || videoElement.ended) return;
 
-    // Ajustar canvas al tamaño real del video
-    const w = videoElement.videoWidth;
-    const h = videoElement.videoHeight;
-    if (overlayCanvas.width !== w || overlayCanvas.height !== h) {
-        overlayCanvas.width = w;
-        overlayCanvas.height = h;
-    }
+    // 1. Dibujar el video en el canvas
+    overlayCtx.drawImage(videoElement, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-    overlayCtx.drawImage(videoElement, 0, 0, w, h);
+    // 2. Si el detector está listo, procesar
+    if (detectorReady && detectorInstance) {
+        try {
+            const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
+            const rgba = imageData.data;
+            const w = imageData.width;
+            const h = imageData.height;
 
-    try {
-        const imageData = overlayCtx.getImageData(0, 0, w, h);
-        const rgba = imageData.data;
+            // Convertir a escala de grises para el detector
+            const gray = new Uint8Array(w * h);
+            for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
+                gray[j] = (rgba[i] * 0.3 + rgba[i + 1] * 0.59 + rgba[i + 2] * 0.11);
+            }
 
-        // Convertir RGBA → Grayscale (promedio simple)
-        const gray = new Uint8Array(w * h);
-        for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
-            const r = rgba[i], g = rgba[i+1], b = rgba[i+2];
-            gray[j] = Math.round(0.299 * r + 0.587 * g + 0.114 * b); // luminancia
+            // Ejecutar detección
+            const detections = detectorInstance.detect(gray, w, h);
+
+            // 3. Dibujar resultados
+            if (detections && detections.length > 0) {
+                dibujarDetecciones(detections);
+            }
+        } catch (e) {
+            console.error("Error en detección:", e);
         }
-
-        // ¡Detectar! (espera promise si es async en algunas versiones)
-        const detections = apriltag.detect(gray, w, h);
-
-        overlayCtx.strokeStyle = "#0f0";
-        overlayCtx.lineWidth = 3;
-
-        detections.forEach(det => {
-            const corners = det.corners;
-            overlayCtx.beginPath();
-            overlayCtx.moveTo(corners[0].x, corners[0].y);
-            overlayCtx.lineTo(corners[1].x, corners[1].y);
-            overlayCtx.lineTo(corners[2].x, corners[2].y);
-            overlayCtx.lineTo(corners[3].x, corners[3].y);
-            overlayCtx.closePath();
-            overlayCtx.stroke();
-
-            const cx = det.center?.x ?? (corners.reduce((s,c)=>s+c.x,0)/4);
-            const cy = det.center?.y ?? (corners.reduce((s,c)=>s+c.y,0)/4);
-
-            overlayCtx.fillStyle = "#f00";
-            overlayCtx.font = "bold 20px Arial";
-            overlayCtx.textAlign = "center";
-            overlayCtx.fillText(`ID: ${det.id}`, cx, cy - 10);
-        });
-    } catch (e) {
-        log("Error en detección: " + (e.message || e));
     }
 
     requestAnimationFrame(bucleProcesamiento);
 }
 
-// ────────────────────────────────────────────────
-// QR y auto-carga desde URL
-// ────────────────────────────────────────────────
-function generarQR(id) {
-    qrContainer.innerHTML = '';
-    const url = `${location.origin}${location.pathname}?connect=${id}`;
-    new QRCode(qrContainer, {
-        text: url,
-        width: 140,
-        height: 140
+function dibujarDetecciones(detections) {
+    detections.forEach(det => {
+        // Dibujar borde verde
+        overlayCtx.strokeStyle = "#00ff00";
+        overlayCtx.lineWidth = 4;
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(det.corners[0].x, det.corners[0].y);
+        overlayCtx.lineTo(det.corners[1].x, det.corners[1].y);
+        overlayCtx.lineTo(det.corners[2].x, det.corners[2].y);
+        overlayCtx.lineTo(det.corners[3].x, det.corners[3].y);
+        overlayCtx.closePath();
+        overlayCtx.stroke();
+
+        // Dibujar ID en rojo
+        overlayCtx.fillStyle = "#ff0000";
+        overlayCtx.font = "bold 20px Arial";
+        overlayCtx.textAlign = "center";
+        overlayCtx.fillText("ID: " + det.id, det.center.x, det.center.y - 10);
     });
 }
 
+// ────────────────────────────────────────────────
+// 9. FUNCIONES AUXILIARES
+// ────────────────────────────────────────────────
+function generarQR(id) {
+    qrContainer.innerHTML = "";
+    const url = `${window.location.origin}${window.location.pathname}?connect=${id}`;
+    new QRCode(qrContainer, { text: url, width: 150, height: 150 });
+}
+
 function revisarUrlParaConexion() {
-    const params = new URLSearchParams(location.search);
-    const connectId = params.get('connect');
-    if (connectId) {
-        remoteIdInput.value = connectId;
-        log(`ID cargado desde URL: ${connectId}`);
-        // btnConnect.click(); // descomenta para auto-conectar
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('connect');
+    if (id) {
+        remoteIdInput.value = id;
+        log("ID detectado de URL.");
     }
 }
 
 // ────────────────────────────────────────────────
-// Modo ahorro (pantalla negra)
+// 10. MODO AHORRO (PANTALLA NEGRA)
 // ────────────────────────────────────────────────
-btnStealth?.addEventListener('click', () => {
+btnStealth.addEventListener('click', () => {
     if (!localStream) return alert("Activa la cámara primero");
-    document.documentElement.requestFullscreen?.();
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
     blackOverlay.style.display = 'block';
-    log("Modo ahorro activado");
+    log("Modo ahorro: ON");
 });
 
-blackOverlay?.addEventListener('dblclick', () => {
+blackOverlay.addEventListener('click', () => {
     blackOverlay.style.display = 'none';
-    document.exitFullscreen?.();
-    log("Modo ahorro desactivado");
+    if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    }
+    log("Modo ahorro: OFF");
 });
 
-log("app.js cargado → esperando inicialización del detector WASM...");
+log("app.js cargado ✓");
