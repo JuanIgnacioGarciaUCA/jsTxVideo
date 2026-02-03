@@ -65,31 +65,42 @@ let detectorReady = false;
 
 // 1. CARGA DEL DETECTOR
 async function cargarDetector() {
-    log("Iniciando motor WASM de AprilTag...");
-    const apriltagModule = await AprilTagWasm();
 
-    if (!apriltagModule) {
-        log("Esperando script de red... (Reintentando)");
-        setTimeout(cargarDetector, 1000);
-        return;
-    }
-    for (const k in apriltagModule) {
-        console.log("Candidate:", k);
-        if (k.toLowerCase().includes("tag")) {
-            
-        }
-    }
-    try {
-        // Crear el detector
-        const detectorInstance = apriltagModule._create_detector();       
-        log("¡Motor AprilTag 36h11 Cargado! ✅");
-        detectorReady = true;
-        detectorInstance.addFamily("tag16h5");
+  log("Iniciando motor WASM de AprilTag...");
 
-    } catch (err) {
-        log("Error al instanciar detector: " + err);
-    }
+  const apriltagModule = await AprilTagWasm({
+    locateFile: (file) =>
+      "https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@main/" + file
+  });
+
+  console.log("Exports:", Object.keys(apriltagModule));
+
+  try {
+
+    const detectorInstance =
+      apriltagModule.AprilTagDetector ?
+        new apriltagModule.AprilTagDetector() :
+      apriltagModule.AprilTag ?
+        new apriltagModule.AprilTag() :
+      apriltagModule.createDetector ?
+        apriltagModule.createDetector() :
+        null;
+
+    if (!detectorInstance)
+      throw "No se encontró clase Detector";
+
+    detectorInstance.addFamily("tag16h5");
+
+    log("¡Motor AprilTag cargado! ✅");
+    detectorReady = true;
+
+    window.detector = detectorInstance;
+
+  } catch (err) {
+    log("Error al instanciar detector: " + err);
+  }
 }
+
 
 cargarDetector();
 
