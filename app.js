@@ -70,7 +70,7 @@ async function cargarDetector() {
 
   const apriltagModule = await AprilTagWasm({
     locateFile: (file) =>
-      "https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@main/" + file
+      "https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/" + file
   });
 
   console.log("Exports:", Object.keys(apriltagModule));
