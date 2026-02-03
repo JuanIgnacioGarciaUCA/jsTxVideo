@@ -56,41 +56,45 @@ let detectorReady = false;
 // ────────────────────────────────────────────────
 // 4. INICIALIZACIÓN DEL DETECTOR APRILTAG
 // ────────────────────────────────────────────────
+
+/**
+ * jsTxVideo - Detección 36h11 Optimizada
+ */
+
+let detectorInstance = null;
+let detectorReady = false;
+
+// 1. CARGA DEL DETECTOR
 function cargarDetector() {
-    // 1. Buscamos la clase en el objeto global window
+    log("Iniciando motor WASM de AprilTag...");
+
+    // Esta librería define 'window.AprilTag'
     const Constructor = window.AprilTag;
 
     if (!Constructor) {
-        // Si no está, es que el .js de la librería aún no ha bajado
-        log("Esperando librería AprilTag (verificando CDN)...");
+        log("Esperando script de red... (Reintentando)");
         setTimeout(cargarDetector, 1000);
         return;
     }
 
-    log("Librería detectada. Iniciando motor WASM...");
-
     try {
-        // 2. Inicializamos el objeto. 
-        // Esta librería espera un callback que se ejecuta cuando el WASM está listo.
+        // Inicializamos. Esta versión busca el .wasm automáticamente 
+        // en la misma ruta de donde bajó el .js
         detectorInstance = new Constructor(() => {
-            log("¡Motor AprilTag cargado con éxito! ✓");
+            log("¡Motor AprilTag 36h11 Cargado! ✅");
+            detectorReady = true;
             
-            try {
-                detectorInstance.set_family("tag16h5"); 
-                log("Familia configurada: tag16h5 🎯");
-                detectorInstance.set_decimate(2.0);
-                detectorReady = true;
-            } catch(e) {
-                log("Error al configurar familia, usando default.");
-                detectorReady = true;
-            }
+            // Configuraciones de rendimiento
+            // detectorInstance.set_decimate(2.0); // Aumenta si el PC es lento
         });
     } catch (err) {
-        log("Error al crear instancia AprilTag: " + err.message);
+        log("Error al instanciar detector: " + err);
     }
 }
 
 cargarDetector();
+
+
 
 // ────────────────────────────────────────────────
 // 5. CONFIGURACIÓN PEERJS (P2P)
@@ -212,36 +216,28 @@ function mostrarVideo(stream) {
         requestAnimationFrame(bucleProcesamiento);
     };
 }
-
+// 2. BUCLE DE PROCESAMIENTO (RECEPTOR)
 function bucleProcesamiento() {
-    if (videoElement.paused || videoElement.ended) return;
+    if (videoElement.paused || videoElement.ended || !detectorReady) {
+        requestAnimationFrame(bucleProcesamiento);
+        return;
+    }
 
-    // 1. Dibujar el video en el canvas
+    // Dibujamos el video en el canvas para obtener los píxeles
     overlayCtx.drawImage(videoElement, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-    // 2. Si el detector está listo, procesar
-    if (detectorReady && detectorInstance) {
-        try {
-            const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
-            const rgba = imageData.data;
-            const w = imageData.width;
-            const h = imageData.height;
+    if (detectorInstance) {
+        const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
+        
+        // Esta librería espera los datos RGBA y las dimensiones
+        const detections = detectorInstance.detect(
+            imageData.data, 
+            overlayCanvas.width, 
+            overlayCanvas.height
+        );
 
-            // Convertir a escala de grises para el detector
-            const gray = new Uint8Array(w * h);
-            for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
-                gray[j] = (rgba[i] * 0.3 + rgba[i + 1] * 0.59 + rgba[i + 2] * 0.11);
-            }
-
-            // Ejecutar detección
-            const detections = detectorInstance.detect(gray, w, h);
-
-            // 3. Dibujar resultados
-            if (detections && detections.length > 0) {
-                dibujarDetecciones(detections);
-            }
-        } catch (e) {
-            console.error("Error en detección:", e);
+        if (detections && detections.length > 0) {
+            dibujarDetecciones(detections);
         }
     }
 
@@ -250,7 +246,7 @@ function bucleProcesamiento() {
 
 function dibujarDetecciones(detections) {
     detections.forEach(det => {
-        // Dibujar borde verde
+        // Dibujar borde verde (corners es un array de 4 puntos {x,y})
         overlayCtx.strokeStyle = "#00ff00";
         overlayCtx.lineWidth = 4;
         overlayCtx.beginPath();
@@ -261,13 +257,14 @@ function dibujarDetecciones(detections) {
         overlayCtx.closePath();
         overlayCtx.stroke();
 
-        // Dibujar ID en rojo
+        // Dibujar ID
         overlayCtx.fillStyle = "#ff0000";
         overlayCtx.font = "bold 20px Arial";
-        overlayCtx.textAlign = "center";
-        overlayCtx.fillText("ID: " + det.id, det.center.x, det.center.y - 10);
+        // det.center tiene {x,y}
+        overlayCtx.fillText("ID: " + det.id, det.center.x - 20, det.center.y);
     });
 }
+
 
 // ────────────────────────────────────────────────
 // 9. FUNCIONES AUXILIARES
