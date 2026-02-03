@@ -64,7 +64,7 @@ let detectorReady = false;
 
 
 // 1. CARGA DEL DETECTOR
-function cargarDetector() {
+async function cargarDetector() {
     log("Iniciando motor WASM de AprilTag...");
 
     // Esta librería define 'window.AprilTag'
