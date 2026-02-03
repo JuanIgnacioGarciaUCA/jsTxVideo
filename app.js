@@ -66,27 +66,24 @@ let detectorReady = false;
 // 1. CARGA DEL DETECTOR
 async function cargarDetector() {
     log("Iniciando motor WASM de AprilTag...");
-
-    // Esta librería define 'window.AprilTag'
-    //const Constructor = window.AprilTag;
     const apriltagModule = await AprilTagWasm();
-    const Constructor = new apriltagModule.AprilTagDetector();
-    Constructor.addFamily("tag16h5");
 
-
-    if (!Constructor) {
+    if (!apriltagModule) {
         log("Esperando script de red... (Reintentando)");
         setTimeout(cargarDetector, 1000);
         return;
     }
 
     try {
+        // Crear el detector
+        const detectorInstance = new apriltagModule.AprilTagDetector();
+        
         // Inicializamos. Esta versión busca el .wasm automáticamente 
         // en la misma ruta de donde bajó el .js
         detectorInstance = new Constructor(() => {
             log("¡Motor AprilTag 36h11 Cargado! ✅");
             detectorReady = true;
-            
+            detectorInstance.addFamily("tag16h5");
             // Configuraciones de rendimiento
             // detectorInstance.set_decimate(2.0); // Aumenta si el PC es lento
         });
