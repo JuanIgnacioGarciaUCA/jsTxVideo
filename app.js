@@ -80,7 +80,7 @@ async function cargarDetector() {
     }
     try {
         // Crear el detector
-        const detectorInstance = apriltagModule.createDetector();       
+        const detectorInstance = apriltagModule._create_detector();       
         log("¡Motor AprilTag 36h11 Cargado! ✅");
         detectorReady = true;
         detectorInstance.addFamily("tag16h5");
