@@ -73,7 +73,11 @@ async function cargarDetector() {
         setTimeout(cargarDetector, 1000);
         return;
     }
-
+    for (const k in apriltagModule) {
+        if (k.toLowerCase().includes("tag")) {
+            console.log("Candidate:", k);
+        }
+    }
     try {
         // Crear el detector
         const detectorInstance = apriltagModule.createDetector();       
