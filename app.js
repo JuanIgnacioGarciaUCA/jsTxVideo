@@ -61,8 +61,6 @@ let detectorReady = false;
  * jsTxVideo - Detección 36h11 Optimizada
  */
 
-let detectorInstance = null;
-let detectorReady = false;
 
 // 1. CARGA DEL DETECTOR
 function cargarDetector() {
