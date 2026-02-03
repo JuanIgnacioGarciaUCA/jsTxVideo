@@ -74,8 +74,9 @@ async function cargarDetector() {
         return;
     }
     for (const k in apriltagModule) {
+        console.log("Candidate:", k);
         if (k.toLowerCase().includes("tag")) {
-            console.log("Candidate:", k);
+            
         }
     }
     try {
