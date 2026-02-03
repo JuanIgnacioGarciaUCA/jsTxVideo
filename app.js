@@ -23,6 +23,7 @@ Object.assign(logArea.style, {
     boxSizing: 'border-box',
     pointerEvents: 'none' // Para que no bloquee clics
 });
+
 document.body.appendChild(logArea);
 
 function log(msg) {
