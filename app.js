@@ -76,17 +76,10 @@ async function cargarDetector() {
 
     try {
         // Crear el detector
-        const detectorInstance = new apriltagModule.AprilTagDetector();
-        
-        // Inicializamos. Esta versión busca el .wasm automáticamente 
-        // en la misma ruta de donde bajó el .js
-        detectorInstance = new Constructor(() => {
-            log("¡Motor AprilTag 36h11 Cargado! ✅");
-            detectorReady = true;
-            detectorInstance.addFamily("tag16h5");
-            // Configuraciones de rendimiento
-            // detectorInstance.set_decimate(2.0); // Aumenta si el PC es lento
-        });
+        const detectorInstance = new apriltagModule.AprilTagDetector();        
+        log("¡Motor AprilTag 36h11 Cargado! ✅");
+        detectorReady = true;
+        detectorInstance.addFamily("tag16h5");
     } catch (err) {
         log("Error al instanciar detector: " + err);
     }
