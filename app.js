@@ -68,7 +68,11 @@ function cargarDetector() {
     log("Iniciando motor WASM de AprilTag...");
 
     // Esta librería define 'window.AprilTag'
-    const Constructor = window.AprilTag;
+    //const Constructor = window.AprilTag;
+    const apriltagModule = await AprilTagWasm();
+    const Constructor = new apriltagModule.AprilTagDetector();
+    Constructor.addFamily("tag16h5");
+
 
     if (!Constructor) {
         log("Esperando script de red... (Reintentando)");
