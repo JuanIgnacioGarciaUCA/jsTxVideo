@@ -1,3 +1,6 @@
+
+/*
+
 const CACHE_NAME = 'jstxvideo-v1';
 
 self.addEventListener('install', (event) => {
@@ -8,3 +11,5 @@ self.addEventListener('fetch', (event) => {
   // Aquí se podría gestionar el modo offline
   event.respondWith(fetch(event.request));
 });
+
+*/
