@@ -3,7 +3,7 @@
  * Funcionalidades: PeerJS (P2P), QR Code, Stealth Mode, AprilTag (tag16h5)
  */
 
-const worker = new Worker('worker.js');
+//const worker = new Worker('worker.js');
 
 // ────────────────────────────────────────────────
 // 1. SISTEMA DE LOGS EN PANTALLA
