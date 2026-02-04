@@ -75,9 +75,11 @@ function initDetector() {
       // apriltag.js internally calls AprilTagWasm() and then onWasmInit
       postMessage({ type: 'ready' });
       detectorReady = true;
+      log("AprilTag detector ready ✓");
     });
   } catch (err) {
     postMessage({ type: 'error', message: 'init failed: ' + err.message });
+    log("Error inicializando AprilTag: " + err.message);
   }
 }
 initDetector();
