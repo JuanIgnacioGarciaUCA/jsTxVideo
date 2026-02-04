@@ -7,8 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>jsTxVideo - Cam Streamer</title>
     
-    <!-- Configuración PWA -->
-    <!--link rel="manifest" href="manifest.json"-->
     <meta name="theme-color" content="#2196F3">
     <meta name="mobile-web-app-capable" content="yes">
 
@@ -47,24 +45,12 @@
         <div class="panel">
             <div style="position: relative; display: inline-block; width: 100%; max-width: 640px;">
                 <!-- El video estará oculto, solo lo usamos como fuente de datos -->
-                <video id="webcam" autoplay playsinline style="display: none;"></video>
+                <video id="webcam" autoplay playsinline style="display: block;"></video>
                 <!-- El canvas mostrará el video + los recuadros -->
-                <canvas id="overlay" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px;"></canvas>
+                <!-- canvas id="overlay" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px;"></canvas-->
             </div>
         </div>
     </div>
-
-
-    <!--script>
-        // Registro del Service Worker para PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW registrado', reg))
-                    .catch(err => console.log('Error registrando SW', err));
-            });
-        }
-    </script-->
 </body>
 </html>
 
