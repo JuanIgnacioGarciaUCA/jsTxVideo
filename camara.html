@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <link rel="icon" href="./pwa-logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="stylesheet.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsTxVideo - Cam Streamer</title>
+    
+    <!-- Configuración PWA -->
+    <!--link rel="manifest" href="manifest.json"-->
+    <meta name="theme-color" content="#2196F3">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Librerías Externas -->
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+</head>
+<body>
+    <!-- Capa negra que cubrirá todo -->
+    <div id="blackOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:10000; color:#222; text-align:center; padding-top:50%;">
+        <p>Transmitiendo en modo ahorro...</p>
+        <p style="font-size: 0.8rem;">(Haz doble clic para volver)</p>
+    </div>
+
+    <!-- En el panel del emisor añade este botón -->
+    <button id="btnStealth" class="btn-stealth" style="background:#444; color:white;">MODO AHORRO (PANTALLA NEGRA)</button>
+
+    <header>
+        <h1>jsTxVideo.77</h1>
+    </header>
+
+    <div class="container">
+        <!-- Panel Emisor -->
+        <div class="panel">
+            <strong>EMISOR:</strong>
+            <p>Tu ID: <span id="my-id" class="id-text">Cargando...</span></p>
+            <div id="qrcode"></div>
+            <button id="btnStart" class="btn-start">ACTIVAR MI CÁMARA</button>
+            <p class="status">Pulsa aquí para empezar a transmitir</p>
+        </div>
+
+        <!-- Panel Receptor -->
+        <div class="panel">
+            <strong>RECEPTOR:</strong>
+            <input type="text" id="remote-id" placeholder="ID del emisor o escanea QR">
+            <button id="btnConnect" class="btn-connect">VER VIDEO REMOTO</button>
+            <p class="status">Pega el ID o escanea el QR del otro móvil</p>
+        </div>
+
+        <!-- Visualizador de Video -->
+        <!--video id="webcam" autoplay playsinline></video-->
+        <!-- Cambiamos ligeramente el HTML para usar un canvas -->
+        <div class="panel">
+            <div style="position: relative; display: inline-block; width: 100%; max-width: 640px;">
+                <!-- El video estará oculto, solo lo usamos como fuente de datos -->
+                <video id="webcam" autoplay playsinline style="display: none;"></video>
+                <!-- El canvas mostrará el video + los recuadros -->
+                <canvas id="overlay" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+
+    <!--script>
+        // Registro del Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW registrado', reg))
+                    .catch(err => console.log('Error registrando SW', err));
+            });
+        }
+    </script-->
+</body>
+</html>
+
+<script src="app.js"></script>
