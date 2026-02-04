@@ -1,3 +1,10 @@
+self.Module = {
+  locateFile: (path) => {
+    // ruta absoluta al directorio donde están apriltag_wasm.js y apriltag_wasm.wasm en jsDelivr
+    return 'https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/' + path;
+  }
+};
+// ahora carga primero el JS generado y luego el wrapper apriltag.js
 importScripts('https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/apriltag_wasm.js');
 importScripts('https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/apriltag.js');
 
