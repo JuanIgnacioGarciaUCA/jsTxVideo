@@ -20,3 +20,23 @@ function initDetector() {
   }
 }
 initDetector();
+
+onmessage = async (ev) => {
+  const msg = ev.data;
+  if (msg && msg.type === 'detect') {
+    if (!detectorReady) {
+      postMessage({ type: 'error', message: 'detector not ready' });
+      return;
+    }
+    // Esperamos buffer transferido (ArrayBuffer) con datos en escala de grises
+    const { width, height, buffer } = msg;
+    try {
+      const gray = new Uint8Array(buffer); // ya es el buffer transferido
+      const detections = detector.detect(gray, width, height);
+      // detections es un array de objetos JSON según la API del repo
+      postMessage({ type: 'result', detections });
+    } catch (err) {
+      postMessage({ type: 'error', message: err.message });
+    }
+  }
+};

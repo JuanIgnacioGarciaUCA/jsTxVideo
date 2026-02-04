@@ -57,36 +57,6 @@ let localStream = null;
 let detectorInstance = null;
 let detectorReady = false;
 
-// ────────────────────────────────────────────────
-// 4. INICIALIZACIÓN DEL DETECTOR APRILTAG
-// ────────────────────────────────────────────────
-
-/**
- * jsTxVideo - Detección 36h11 Optimizada
- */
-
-
-// 1. CARGA DEL DETECTOR
-//importScripts('https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/apriltag_wasm.js');
-//importScripts('https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/apriltag.js');
-
-
-function initDetector() {
-  // Apriltag constructor takes a callback when wasm is ready
-  try {
-    detectorInstance = new Apriltag(() => {
-      // apriltag.js internally calls AprilTagWasm() and then onWasmInit
-      postMessage({ type: 'ready' });
-      detectorReady = true;
-      log("AprilTag detector ready ✓");
-    });
-  } catch (err) {
-    postMessage({ type: 'error', message: 'init failed: ' + err.message });
-    log("Error inicializando AprilTag: " + err.message);
-  }
-}
-initDetector();
-
 
 
 // ────────────────────────────────────────────────
@@ -206,7 +176,7 @@ function mostrarVideo(stream) {
     videoElement.onloadedmetadata = () => {
         videoElement.play();
         log("Iniciando análisis de frames...");
-        requestAnimationFrame(bucleProcesamiento);
+        //requestAnimationFrame(bucleProcesamiento);
     };
 }
 // 2. BUCLE DE PROCESAMIENTO (RECEPTOR)
