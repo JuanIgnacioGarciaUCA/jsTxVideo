@@ -1,63 +1,101 @@
-// worker.js (versión robusta: prefetch WASM y provee wasmBinary a la fábrica)
-
+// worker.js (fallback para cargar apriltag.js si importScripts falla)
 // Ajusta baseUrl si quieres usar un tag/commit en lugar de @master
 const baseUrl = 'https://cdn.jsdelivr.net/gh/arenaxr/apriltag-js-standalone@master/html/';
 
-// 1) Importa el JS generado por emscripten (define la fábrica AprilTagWasm)
-importScripts(baseUrl + 'apriltag_wasm.js');
+// 1) Importa el JS de emscripten (debe definir AprilTagWasm)
+try {
+  importScripts(baseUrl + 'apriltag_wasm.js');
+  postMessage({ type: 'debug', message: 'imported apriltag_wasm.js' });
+} catch (e) {
+  postMessage({ type: 'error', message: 'importScripts apriltag_wasm.js failed', error: e && e.message ? e.message : String(e) });
+  throw e;
+}
 
-// 2) Inicia la descarga del .wasm (ArrayBuffer) en segundo plano
+// 2) Prefetch wasm (ArrayBuffer)
 const wasmPromise = (async () => {
   const url = baseUrl + 'apriltag_wasm.wasm';
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error('WASM fetch failed: ' + r.status);
     const ab = await r.arrayBuffer();
-    // reportamos al main thread que el fetch fue OK
-    try { postMessage({ type: 'debug', message: 'wasm fetched', status: r.status, url }); } catch (e) {}
+    postMessage({ type: 'debug', message: 'wasm fetched', status: r.status, url });
     return ab;
   } catch (e) {
-    try { postMessage({ type: 'debug', message: 'wasm fetch error', error: e && e.message ? e.message : String(e), url }); } catch (ee) {}
+    postMessage({ type: 'debug', message: 'wasm fetch error', error: e && e.message ? e.message : String(e), url });
     throw e;
   }
 })();
 
-// 3) Envuelve la fábrica AprilTagWasm para inyectar wasmBinary + locateFile
+// 3) Wrap AprilTagWasm to inject wasmBinary / locateFile
 if (typeof self.AprilTagWasm === 'function') {
   const origFactory = self.AprilTagWasm;
   self.AprilTagWasm = async function(moduleOverrides) {
     moduleOverrides = moduleOverrides || {};
-    // inject locateFile if not provided
-    if (!moduleOverrides.locateFile) {
-      moduleOverrides.locateFile = (path) => baseUrl + path;
-    }
-    // wait for the fetched wasm and provide it as wasmBinary (so the factory won't fetch it)
+    if (!moduleOverrides.locateFile) moduleOverrides.locateFile = (path) => baseUrl + path;
     try {
-      const wasmBinary = await wasmPromise;
-      moduleOverrides.wasmBinary = wasmBinary;
-    } catch (e) {
-      // If fetch failed, still call the factory (it will try to fetch itself and possibly fail)
-      // but we log the error for debugging
-      try { postMessage({ type: 'debug', message: 'wasmBinary not available, will let factory fetch it', error: e && e.message ? e.message : String(e) }); } catch (_) {}
+      moduleOverrides.wasmBinary = await wasmPromise;
+    } catch (_) {
+      postMessage({ type: 'debug', message: 'wasmBinary not available, letting factory fetch it' });
     }
-    // Call original factory (returns a Promise resolving to Module)
     return origFactory(moduleOverrides);
   };
-  try { postMessage({ type: 'debug', message: 'AprilTagWasm wrapped (will provide wasmBinary when available)' }); } catch(e){}
+  postMessage({ type: 'debug', message: 'AprilTagWasm wrapped' });
 } else {
-  try { postMessage({ type: 'debug', message: 'AprilTagWasm is NOT defined after apriltag_wasm.js import' }); } catch(e){}
+  postMessage({ type: 'debug', message: 'AprilTagWasm is NOT defined after apriltag_wasm.js import' });
 }
 
-// 4) Ahora importa el wrapper apriltag.js (debe usar AprilTagWasm(...))
-importScripts(baseUrl + 'apriltag.js');
+// 4) Cargar apriltag.js con fallback: importScripts directo, si falla -> fetch + blob -> importScripts(blobURL)
+async function importApriltagWrapper() {
+  const url = baseUrl + 'apriltag.js';
+  try {
+    // Intento directo (sin await porque importScripts es síncrono)
+    importScripts(url);
+    postMessage({ type: 'debug', message: 'imported apriltag.js via importScripts', url });
+    return;
+  } catch (e) {
+    postMessage({ type: 'debug', message: 'importScripts apriltag.js failed, will try fetch+blob', error: e && e.message ? e.message : String(e), url });
+    // fallback: fetch and import as blob URL
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('fetch apriltag.js failed: ' + r.status);
+      const text = await r.text();
+      const blob = new Blob([text], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      try {
+        importScripts(blobUrl);
+        postMessage({ type: 'debug', message: 'imported apriltag.js via blobUrl', blobUrl });
+        // revoke the blob URL after a short delay to avoid race with worker internals
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        return;
+      } catch (innerErr) {
+        postMessage({ type: 'error', message: 'importScripts from blob failed', error: innerErr && innerErr.message ? innerErr.message : String(innerErr) });
+        throw innerErr;
+      }
+    } catch (fetchErr) {
+      postMessage({ type: 'error', message: 'fetch apriltag.js failed', error: fetchErr && fetchErr.message ? fetchErr.message : String(fetchErr), url });
+      throw fetchErr;
+    }
+  }
+}
 
-// 5) Inicialización del detector usando la clase Apriltag del wrapper
+importApriltagWrapper().then(() => {
+  postMessage({ type: 'debug', message: 'apriltag wrapper loaded' });
+  // después de cargar el wrapper intentaremos inicializar el detector
+  initDetectorSafe();
+}).catch((e) => {
+  postMessage({ type: 'error', message: 'Failed to load apriltag wrapper', error: e && e.message ? e.message : String(e) });
+  // no seguiremos si no tenemos el wrapper
+});
+
+// 5) Inicialización (separamos para llamar después de cargar wrapper)
 let detector = null;
 let detectorReady = false;
 
-function initDetector() {
+function initDetectorSafe() {
   try {
-    // Apriltag constructor in repo expects a callback when WASM is ready
+    // Detectamos qué exporta el wrapper
+    postMessage({ type: 'debug', message: 'Apriltag export type', typeofApriltag: typeof Apriltag });
+    // Crear instancia; el wrapper del repo usa "new Apriltag(callback)"
     detector = new Apriltag(() => {
       detectorReady = true;
       postMessage({ type: 'ready' });
@@ -66,18 +104,13 @@ function initDetector() {
     postMessage({ type: 'error', message: 'init failed: ' + (err && err.message ? err.message : String(err)), stack: err && err.stack });
   }
 }
-initDetector();
 
-// 6) Mensajes entrantes (detect, debug, etc.)
+// 6) Mensajes entrantes: detect, debug
 onmessage = async (ev) => {
   const msg = ev.data;
   if (!msg) return;
-
   if (msg.type === 'detect') {
-    if (!detectorReady) {
-      postMessage({ type: 'error', message: 'detector not ready' });
-      return;
-    }
+    if (!detectorReady) { postMessage({ type: 'error', message: 'detector not ready' }); return; }
     try {
       const { width, height, buffer } = msg;
       const gray = new Uint8Array(buffer);
@@ -86,14 +119,12 @@ onmessage = async (ev) => {
     } catch (err) {
       postMessage({ type: 'error', message: err && err.message ? err.message : String(err), stack: err && err.stack });
     }
-  } else if (msg.type === 'debug') {
-    if (msg.action === 'check_wasm') {
-      try {
-        const r = await fetch(baseUrl + 'apriltag_wasm.wasm', { method: 'HEAD' });
-        postMessage({ type: 'debug', message: 'wasm HEAD', status: r.status, contentType: r.headers.get('content-type'), url: baseUrl + 'apriltag_wasm.wasm' });
-      } catch (e) {
-        postMessage({ type: 'debug', message: 'wasm HEAD failed', error: e && e.message ? e.message : String(e) });
-      }
+  } else if (msg.type === 'debug' && msg.action === 'check_wasm') {
+    try {
+      const r = await fetch(baseUrl + 'apriltag_wasm.wasm', { method: 'HEAD' });
+      postMessage({ type: 'debug', message: 'wasm HEAD', status: r.status, contentType: r.headers.get('content-type'), url: baseUrl + 'apriltag_wasm.wasm' });
+    } catch (e) {
+      postMessage({ type: 'debug', message: 'wasm HEAD failed', error: e && e.message ? e.message : String(e) });
     }
   }
 };
