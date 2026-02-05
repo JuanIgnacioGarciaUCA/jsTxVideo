@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>jsTxVideo - Cam Streamer</title>
-    
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2196F3">
     <meta name="mobile-web-app-capable" content="yes">
 
@@ -55,7 +55,7 @@
 </html>
 
 <script>
-const worker = new Worker('worker.js');
+//const worker = new Worker('worker.js');
 
 // ────────────────────────────────────────────────
 // 1. SISTEMA DE LOGS EN PANTALLA
@@ -92,8 +92,6 @@ function log(msg) {
 // 2. REFERENCIAS DOM
 // ────────────────────────────────────────────────
 const videoElement  = document.getElementById('webcam');
-//const overlayCanvas = document.getElementById('overlay');
-//const overlayCtx    = overlayCanvas.getContext('2d', { willReadFrequently: true });
 const btnStart      = document.getElementById('btnStart');
 const myIdDisplay   = document.getElementById('my-id');
 const qrContainer   = document.getElementById('qrcode');
@@ -218,4 +216,15 @@ blackOverlay.addEventListener('click', () => {
 });
 
 log("app.js cargado ✓");
+</script>
+
+<script>
+    // Registro del Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw1.js')
+                .then(reg => console.log('SW1 registrado', reg))
+                .catch(err => console.log('Error registrando SW1', err));
+        });
+    }
 </script>
