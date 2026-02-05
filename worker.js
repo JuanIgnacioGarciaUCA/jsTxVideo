@@ -11,11 +11,21 @@ let detectorReady = false;
 try {
     // Importamos primero el motor WASM y luego el wrapper
     importScripts(baseUrl + 'apriltag_wasm.js');
+    //importScripts(baseUrl + 'apriltag.js');
+    console.log("Scripts de AprilTag importados correctamente.");
+} catch (e) {
+    postMessage({ type: 'error', message: 'Error al importar scripts: ' + e.message });
+}
+try {
+    // Importamos primero el motor WASM y luego el wrapper
+    //importScripts(baseUrl + 'apriltag_wasm.js');
     importScripts(baseUrl + 'apriltag.js');
     console.log("Scripts de AprilTag importados correctamente.");
 } catch (e) {
     postMessage({ type: 'error', message: 'Error al importar scripts: ' + e.message });
 }
+
+
 
 // 2. CONFIGURACIÓN DEL WRAPPER WASM
 // Esto es necesario porque la librería espera encontrar el archivo .wasm en la misma carpeta
