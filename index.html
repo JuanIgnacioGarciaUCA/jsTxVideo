@@ -33,9 +33,10 @@
         <div class="panel">
             <div style="position: relative; display: inline-block; width: 100%; max-width: 640px;">
                 <!-- El video estará oculto, solo lo usamos como fuente de datos -->
-                <video id="webcam" autoplay playsinline style="display: block;"></video>
+                <video id="webcam" autoplay playsinline style="display: none;"></video>
                 <!-- El canvas mostrará el video + los recuadros -->
                 <canvas id="overlay" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px;"></canvas>
+                <canvas id="overlay1" width="640" height="480" style="width: 100%; height: auto; background: #000; border-radius: 8px; display: none;"></canvas>
             </div>
         </div>
     </div>

@@ -78,6 +78,8 @@ function log(msg) {
 const videoElement  = document.getElementById('webcam');
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx    = overlayCanvas.getContext('2d', { willReadFrequently: true });
+const overlayCanvas1 = document.getElementById('overlay1');
+const overlayCtx1    = overlayCanvas1.getContext('2d', { willReadFrequently: true });
 const btnConnect    = document.getElementById('btnConnect');
 const remoteIdInput = document.getElementById('remote-id');
 const qrContainer   = document.getElementById('qrcode');
@@ -158,57 +160,120 @@ btnConnect.addEventListener('click', async () => {
 // 8. PROCESAMIENTO Y DIBUJO (APRILTAG)
 // ────────────────────────────────────────────────
 function mostrarVideo(stream) {
+    log("Asignando stream al elemento de video...");
     videoElement.srcObject = stream;
-    videoElement.muted = true;
-    //videoElement.play();
-    
+    videoElement.muted = true; // Evitar feedback de audio
+    // Esperamos a que el video tenga dimensiones reales
     videoElement.onloadedmetadata = () => {
+        log(`Video recibido: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
         videoElement.play();
-        log("Iniciando análisis de frames...");
-        bucleProcesamiento(); // <-- ACTIVAR EL BUCLE AQUÍ
+        // Ajustamos el tamaño del canvas al tamaño real del video recibido
+        overlayCanvas.width = videoElement.videoWidth;
+        overlayCanvas.height = videoElement.videoHeight;
+        log("Iniciando bucle de procesamiento...");
+        bucleProcesamiento();
     };
-    
 }
 
 // 2. BUCLE DE PROCESAMIENTO (RECEPTOR)
+/**
+ * 8. PROCESAMIENTO Y DIBUJO (RECEPTOR)
+ */
+
+// Esta función se llama cuando la llamada de PeerJS entrega el stream
+function mostrarVideo(stream) {
+    log("Asignando stream al elemento de video...");
+    videoElement.srcObject = stream;
+    videoElement.muted = true; // Evitar feedback de audio
+    
+    // Esperamos a que el video tenga dimensiones reales
+    videoElement.onloadedmetadata = () => {
+        log(`Video recibido: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+        videoElement.play();
+        
+        // Ajustamos el tamaño del canvas al tamaño real del video recibido
+        overlayCanvas.width = videoElement.videoWidth;
+        overlayCanvas.height = videoElement.videoHeight;
+        
+        log("Iniciando bucle de procesamiento...");
+        bucleProcesamiento();
+    };
+}
+
+let frameCount = 0;
+// Esta función corre continuamente capturando frames
 function bucleProcesamiento() {
-    // Si el video no está listo o el worker no ha cargado el WASM, esperamos
+    // 1. Validaciones previas
+    // No procesamos si el video está pausado o si el worker aún no ha dicho "ready"
     if (videoElement.paused || videoElement.ended || !detectorReady) {
         requestAnimationFrame(bucleProcesamiento);
         return;
     }
 
-    // Dibujamos el video en el canvas
-    overlayCtx.drawImage(videoElement, 0, 0, overlayCanvas.width, overlayCanvas.height);
+    // 2. Dibujar el frame actual en el canvas visual
+    overlayCtx1.drawImage(videoElement, 0, 0, overlayCanvas1.width, overlayCanvas1.height);
 
-    // Extraemos los píxeles
-    const imageData = overlayCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
-    
-    // El worker espera una imagen en escala de grises (8 bits por píxel)
-    // Vamos a convertir RGBA a Gris antes de enviar para que el worker vuele
-    const grayData = new Uint8Array(overlayCanvas.width * overlayCanvas.height);
-    for (let i = 0, j = 0; i < imageData.data.length; i += 4, j++) {
-        // Fórmula básica de luminosidad: 0.299R + 0.587G + 0.114B
-        grayData[j] = (imageData.data[i] * 0.299 + imageData.data[i + 1] * 0.587 + imageData.data[i + 2] * 0.114);
+    // 3. Extraer los píxeles (RGBA)
+    const imageData = overlayCtx1.getImageData(0, 0, overlayCanvas1.width, overlayCanvas1.height);
+    const data = imageData.data;
+    const w = overlayCanvas1.width;
+    const h = overlayCanvas1.height;
+
+    // 4. CONVERSIÓN A BLANCO Y NEGRO (Grayscale)
+    // Creamos un buffer de 1 byte por píxel (Uint8Array)
+    const grayData = new Uint8Array(w * h);
+
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+        // Fórmula de luminosidad: Y = 0.299R + 0.587G + 0.114B
+        const gray = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+        grayData[j] = gray;
+        imageData.data[i] = gray;
+        imageData.data[i + 1] = gray;
+        imageData.data[i + 2] = gray;
+        imageData.data[i + 3] = 255;
     }
+    overlayCtx.putImageData(imageData, 0, 0);
 
-    // ENVIAR AL WORKER
+    // 5. ENVÍO AL WORKER
+    // Enviamos el mensaje 'detect' con el buffer de grises
+    // El segundo parámetro [grayData.buffer] es vital: transfiere la memoria en lugar de copiarla
     detectorWorker.postMessage({
         type: 'detect',
-        width: overlayCanvas.width,
-        height: overlayCanvas.height,
+        width: w,
+        height: h,
         buffer: grayData.buffer
-    }, [grayData.buffer]); // Enviamos el buffer como Transferable para máxima velocidad
+    }, [grayData.buffer]);
 
-    // No llamamos a requestAnimationFrame aquí, 
-    // lo ideal es esperar el mensaje de vuelta o limitar los FPS.
-    // Para simplificar, lo llamamos con un pequeño delay o directamente:
-    setTimeout(bucleProcesamiento, 30); // ~30 FPS
+    // --- NUEVO: INDICADOR DE ACTIVIDAD ---
+    frameCount++;
+    // Dibujamos un pequeño recuadro de fondo para que se vea bien el texto
+    overlayCtx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    overlayCtx.fillRect(10, 10, 110, 30);
+    // Dibujamos el punto parpadeante (parpadea cada 15 frames)
+    if (Math.floor(frameCount / 15) % 2 === 0) {
+        overlayCtx.fillStyle = "#ff0000"; // Rojo
+    } else {
+        overlayCtx.fillStyle = "#550000"; // Rojo oscuro
+    }
+    overlayCtx.beginPath();
+    overlayCtx.arc(25, 25, 7, 0, Math.PI * 2);
+    overlayCtx.fill();
+    // Dibujamos el texto de status
+    overlayCtx.fillStyle = "#ffffff";
+    overlayCtx.font = "bold 14px monospace";
+    overlayCtx.fillText("PROC: " + frameCount, 40, 30);
+    // ---------------------------------------
+
+    // 6. CONTROL DE FPS
+    // En lugar de requestAnimationFrame puro (60fps), usamos un pequeño delay
+    // para no saturar el procesador del móvil/PC, apuntando a unos 20-25 FPS.
+    setTimeout(() => {
+        requestAnimationFrame(bucleProcesamiento);
+    }, 40); 
 }
-
 function dibujarDetecciones(detections) {
-    console.log("Dibujando detecciones:", detections);
-    /*
+    //console.log("Dibujando detecciones:", detections);
+    
     detections.forEach(det => {
         // Dibujar borde verde (corners es un array de 4 puntos {x,y})
         overlayCtx.strokeStyle = "#00ff00";
@@ -226,7 +291,7 @@ function dibujarDetecciones(detections) {
         overlayCtx.font = "bold 20px Arial";
         // det.center tiene {x,y}
         overlayCtx.fillText("ID: " + det.id, det.center.x - 20, det.center.y);
-    });*/
+    });
 }
 
 
