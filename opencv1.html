@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Webcam → AprilTag 16h5 con OpenCV.js</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; text-align: center; margin: 0; padding: 20px; }
+    #container  { position: relative; display: inline-block; }
+    video, canvas { max-width: 100%; height: auto; border: 2px solid #444; border-radius: 8px; }
+    #status     { font-size: 1.3em; margin: 15px 0; }
+    #detections { font-family: monospace; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 6px; margin-top: 10px; }
+  </style>
+
+  <!-- Recomendado: build oficial más reciente con AprilTag -->
+  <script async
+    src="https://docs.opencv.org/4.x/opencv.js"
+    onload="onOpenCvLoaded()"
+    type="text/javascript">
+  </script>
+</head>
+<body>
+
+  <h2>Detección de AprilTags tag16h5 desde la webcam</h2>
+  <div id="status">Cargando OpenCV.js ... (puede tardar 5–15 segundos)</div>
+
+  <div id="container">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div id="detections">Detecciones: —</div>
+
+  <script>
+    let video = document.getElementById('video');
+    let canvas = document.getElementById('canvas');
+    let ctx    = canvas.getContext('2d');
+    let status = document.getElementById('detections');
+
+    let cvReady = false;
+    let streaming = false;
+
+    function onOpenCvLoaded() {
+      cv['onRuntimeInitialized'] = () => {
+        status.textContent = "OpenCV.js → ¡Listo!";
+        document.getElementById('status').textContent = "Iniciando cámara...";
+        startCamera();
+      };
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }   // "user" → frontal   "environment" → trasera
+        });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play();
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          document.getElementById('status').textContent = "Cámara activa → detectando tag16h5";
+          streaming = true;
+          requestAnimationFrame(processFrame);
+        };
+      } catch (err) {
+        status.textContent = "Error al acceder a la cámara: " + err.message;
+        console.error(err);
+      }
+    }
+
+    function processFrame() {
+      if (!streaming || !cvReady) {
+        requestAnimationFrame(processFrame);
+        return;
+      }
+
+      // Dibujamos el frame actual en el canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Leemos la imagen al formato Mat de OpenCV
+      let src = cv.imread(canvas);
+
+      // Convertimos a escala de grises (AprilTag funciona mejor en gris)
+      let gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+
+      // Parámetros de detección
+      let detectorParams = new cv.AprilTagDetectorParameters();
+      detectorParams.adaptiveThreshWinSizeMin     = 5;
+      detectorParams.adaptiveThreshWinSizeMax     = 45;
+      detectorParams.adaptiveThreshConstant       = 7;
+      detectorParams.quadSigma                    = 0.0;
+      detectorParams.refineEdges                  = true;
+      detectorParams.decodeSharpening             = 0.25;
+      detectorParams.maxHammingDist               = 0;     // 0 = muy estricto
+
+      // Creamos el diccionario → family tag16h5
+      let dictionary = new cv.getPredefinedDictionary(cv.DICT_APRILTAG_16h5);
+
+      // ¡Detección!
+      let tags = new cv_MatVector();
+      let corners = new cv_MatVector();
+      let ids = new cv.Mat();
+
+      cv.AprilTagDetector.detectMarkers(
+        gray,
+        dictionary,
+        tags,
+        corners,
+        ids,
+        detectorParams
+      );
+
+      // Dibujamos los tags detectados
+      if (ids.rows > 0) {
+        cv.drawDetectedMarkers(src, corners, ids, [0, 255, 0, 255]);
+        
+        let txt = "Detectados " + ids.rows + " tags:\n";
+        for (let i = 0; i < ids.rows; i++) {
+          let id = ids.data32S[i];
+          txt += `→ ID ${id}\n`;
+        }
+        status.textContent = txt;
+      } else {
+        status.textContent = "Ningún AprilTag 16h5 detectado";
+      }
+
+      // Mostramos el resultado
+      cv.imshow('canvas', src);
+
+      // Liberamos memoria (muy importante en bucle!)
+      src.delete(); gray.delete();
+      dictionary.delete();
+      tags.delete(); corners.delete(); ids.delete();
+      detectorParams.delete();
+
+      requestAnimationFrame(processFrame);
+    }
+
+    // Esperamos que OpenCV esté listo antes de empezar a procesar
+    function checkReady() {
+      if (typeof cv !== 'undefined' && cv.AprilTagDetector) {
+        cvReady = true;
+      } else {
+        setTimeout(checkReady, 300);
+      }
+    }
+    checkReady();
+  </script>
+
+</body>
+</html>

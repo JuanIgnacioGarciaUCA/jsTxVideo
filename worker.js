@@ -84,11 +84,11 @@ onmessage = (ev) => {
       const detections = detector.detect(grayPixels, width, height);
       // Devolver resultados
       postMessage({ type: 'result', detections });
-      if(detections.length>0 ){
+      /*if(detections.length>0 ){
         postMessage({ type: 'result1', detections });
         postMessage({ type: 'debug1', message: "Primera detección realizada con éxito.", msg, detections });
         aux=false;
-      }
+      }*/
     } catch (err) {
       postMessage({ type: 'error', message: 'Error detectando: ' + err.message });
     }

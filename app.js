@@ -26,10 +26,6 @@ detectorWorker.onmessage = (e) => {
             log("❌ Error en Worker: " + msg.message);
             console.error("❌ Error en Worker: " + msg.message,"msg=", msg);
             break;
-        case 'result':
-            // Recibimos las detecciones del worker
-            dibujarDetecciones(msg.detections);
-            break;
         default:
             console.log("[Worker Message] Tipo desconocido: " + msg.type, msg);
             break;
@@ -273,9 +269,29 @@ function bucleProcesamiento() {
 }
 function dibujarDetecciones(detections) {
     //console.log("Dibujando detecciones:", detections);
-    
+    const TAG_SIZE_METERS = 0.05; // Tamaño real del tag36h11 en metros (5 cm)
+    const w = overlayCanvas.width;
+    const h = overlayCanvas.height;  
+    const focalLength = w * 0.875; // Aproximación común para cámaras de smartphones  
     detections.forEach(det => {
+        // 1. Calcular el lado del tag en píxeles (promedio de los 4 lados para precisión)
+        const ladoTop = Math.hypot(det.corners[0].x - det.corners[1].x, det.corners[0].y - det.corners[1].y);
+        const ladoRight = Math.hypot(det.corners[1].x - det.corners[2].x, det.corners[1].y - det.corners[2].y);
+        const ladoPixeles = (ladoTop + ladoRight) / 2;
+
+        // 2. Calcular Distancia y Ángulo
+        const distancia = calcularDistancia(TAG_SIZE_METERS, ladoPixeles, focalLength);
+        const angulo = calcularAngulo(det.center.x, w, focalLength);
+
+        // 3. Dibujar resultados en pantalla
+        overlayCtx.fillStyle = "yellow";
+        overlayCtx.font = "16px Arial";
+        overlayCtx.fillText(`ID: ${det.id}`, det.center.x, det.center.y - 40);
+        overlayCtx.fillText(`Dist: ${distancia.toFixed(2)} m`, det.center.x, det.center.y - 20);
+        overlayCtx.fillText(`Ang: ${angulo.toFixed(1)}°`, det.center.x, det.center.y);
+
         // Dibujar borde verde (corners es un array de 4 puntos {x,y})
+        console.log("Dibujando detección ID:", det.id, "con esquinas:", det.corners);
         overlayCtx.strokeStyle = "#00ff00";
         overlayCtx.lineWidth = 4;
         overlayCtx.beginPath();
@@ -305,6 +321,23 @@ function revisarUrlParaConexion() {
         remoteIdInput.value = id;
         log("ID detectado de URL.");
     }
+}
+
+function calcularAngulo(centerX, imageWidth, focalLength) {
+    // Distancia en píxeles desde el centro de la imagen
+    const dx = centerX - (imageWidth / 2);
+    
+    // Ángulo en radianes usando arcotangente
+    const anguloRadianes = Math.atan2(dx, focalLength);
+    
+    // Convertir a grados
+    return anguloRadianes * (180 / Math.PI);
+}
+
+function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
+    if (ladoPixeles === 0) return 0;
+    // Fórmula: Distancia = (Lado Real * Distancia Focal) / Lado en Píxeles
+    return (ladoRealMeters * focalLength) / ladoPixeles;
 }
 
 log("app.js cargado ✓");
