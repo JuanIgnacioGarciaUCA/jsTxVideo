@@ -358,6 +358,23 @@ function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
 
 const socket = new WebSocket('ws://192.168.1.37:81');
 
+
+socket.onopen = (event) => {
+    log("✅ Conectado al Robot con éxito");
+    // Aquí puedes cambiar el color de un botón o activar el control
+};
+
+// 2. ERROR: Se disparará si la IP es incorrecta o el puerto está cerrado
+socket.onerror = (error) => {
+    log("❌ Error de conexión: Asegúrate de que la IP sea correcta.");
+};
+
+// 3. CIERRE: Se disparará si el robot se apaga o te alejas del WiFi
+socket.onclose = (event) => {
+    log("⚠️ Conexión cerrada con el robot.");
+};
+
+
 // Escuchar al Worker
 /*
 detectorWorker.onmessage = (e) => {
