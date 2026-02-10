@@ -18,6 +18,17 @@ detectorWorker.onmessage = (e) => {
         case 'result':
             // Recibimos las detecciones del worker
             dibujarDetecciones(msg.detections);
+            if (msg.detections.length > 0) {
+                // 1. Calculamos distancia y ángulo del primer tag detectado
+                const tag = msg.detections[0];
+                const dist = calcularDistancia(tag); // Tu función de antes
+                const ang  = calcularAngulo(tag);    // Tu función de antes
+                // 2. Lógica de control
+                decidirMovimiento(dist, ang);
+            } else {
+                // Si no hay tags, podemos decidir parar los motores
+                enviarAlRobot(90, 0, 0, 0, 0);
+            }
             break;
         case 'debug':
             console.log("[Worker Debug]", msg.message);
@@ -339,5 +350,57 @@ function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
     // Fórmula: Distancia = (Lado Real * Distancia Focal) / Lado en Píxeles
     return (ladoRealMeters * focalLength) / ladoPixeles;
 }
+
+
+//////////////////////////////////////
+// Conexión con el robot (WebSocket)
+//////////////////////////////////////
+
+const socket = new WebSocket('ws://192.168.1.37:81');
+
+// Escuchar al Worker
+/*
+detectorWorker.onmessage = (e) => {
+    if (e.data.type === 'result') {
+        const detections = e.data.detections;
+        
+        if (detections.length > 0) {
+            // 1. Calculamos distancia y ángulo del primer tag detectado
+            const tag = detections[0];
+            const dist = calcularDistancia(tag); // Tu función de antes
+            const ang  = calcularAngulo(tag);    // Tu función de antes
+            
+            // 2. Lógica de control
+            decidirMovimiento(dist, ang);
+        } else {
+            // Si no hay tags, podemos decidir parar los motores
+            enviarAlRobot(90, 0, 0, 0, 0);
+        }
+    }
+};*/
+
+function decidirMovimiento(distancia, angulo) {
+    let s = 90, m1f = 0, m1b = 0, m2f = 0, m2b = 0;
+
+    // Lógica simple: si está a más de 0.6m, avanzar
+    if (distancia > 0.6) {
+        m1f = 150; m2f = 150;
+        
+        // Corregir dirección según ángulo
+        if (angulo < -10) { m1f = 100; m2f = 180; } // Girar izquierda
+        if (angulo > 10)  { m1f = 180; m2f = 100; } // Girar derecha
+    }
+
+    enviarAlRobot(s, m1f, m1b, m2f, m2b);
+}
+
+function enviarAlRobot(s, m1f, m1b, m2f, m2b) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(`${s},${m1f},${m1b},${m2f},${m2b}\n`);
+    }
+}
+
+////////
+
 
 log("app.js cargado ✓");
