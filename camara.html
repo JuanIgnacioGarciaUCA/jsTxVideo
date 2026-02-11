@@ -182,7 +182,8 @@ peer.on('call', call => {
 // ────────────────────────────────────────────────
 function generarQR(id) {
     qrContainer.innerHTML = "";
-    const url = `${window.location.origin}${window.location.pathname}?connect=${id}`;
+    //const url = `${window.location.origin}${window.location.pathname}?connect=${id}`;
+    const url = `${window.location.origin}/?connect=${id}`;
     new QRCode(qrContainer, { text: url, width: 150, height: 150 });
 }
 
