@@ -7,9 +7,7 @@
 // ────────────────────────────────────────────────
 // 1. SISTEMA DE LOGS EN PANTALLA
 // ────────────────────────────────────────────────
-log("Cargando app.js... 1");
 
-document.body.appendChild(logArea);
 
 
 const logArea = document.createElement('div');
@@ -29,8 +27,9 @@ Object.assign(logArea.style, {
     boxSizing: 'border-box',
     pointerEvents: 'none' // Para que no bloquee clics
 });
+document.body.appendChild(logArea);
 
-
+log("Cargando app.js... 1");
 
 function log(msg) {
     const now = new Date().toLocaleTimeString();
