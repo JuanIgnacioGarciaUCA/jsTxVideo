@@ -3,6 +3,8 @@
  * Funcionalidades: PeerJS (P2P), QR Code, Stealth Mode, AprilTag (tag16h5)
  */
 
+log("Cargando app.js... 0");
+
 const detectorWorker = new Worker('worker.js');
 let detectorReady = false; // El worker nos avisará cuando esté listo
 
@@ -51,6 +53,7 @@ detectorWorker.onmessage = (e) => {
 // ────────────────────────────────────────────────
 // 1. SISTEMA DE LOGS EN PANTALLA
 // ────────────────────────────────────────────────
+log("Cargando app.js... 1");
 
 const logArea = document.createElement('div');
 Object.assign(logArea.style, {
@@ -72,6 +75,7 @@ Object.assign(logArea.style, {
 
 document.body.appendChild(logArea);
 
+
 function log(msg) {
     const now = new Date().toLocaleTimeString();
     logArea.innerHTML += `[${now}] ${msg}<br>`;
@@ -82,6 +86,8 @@ function log(msg) {
 // ────────────────────────────────────────────────
 // 2. REFERENCIAS DOM
 // ────────────────────────────────────────────────
+log("Cargando app.js... 2");
+
 const videoElement  = document.getElementById('webcam');
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx    = overlayCanvas.getContext('2d', { willReadFrequently: true });
@@ -94,12 +100,16 @@ const qrContainer   = document.getElementById('qrcode');
 // ────────────────────────────────────────────────
 // 3. VARIABLES GLOBALES
 // ────────────────────────────────────────────────
+log("Cargando app.js... 3");
+
 let localStream = null;
 let detectorInstance = null;
 
 // ────────────────────────────────────────────────
 // 5. CONFIGURACIÓN PEERJS (P2P)
 // ────────────────────────────────────────────────
+log("Cargando app.js... 5");
+
 const peer = new Peer(undefined, {
     config: {
         iceServers: [
@@ -131,6 +141,7 @@ peer.on('error', err => log(`Error PeerJS: ${err.type}`));
 // ────────────────────────────────────────────────
 // 7. LÓGICA RECEPTOR (EL PC)
 // ────────────────────────────────────────────────
+log("Cargando app.js... 7");
 btnConnect.addEventListener('click', async () => {
     const remoteId = remoteIdInput.value.trim();
     if (!remoteId) return alert("Introduce el ID del móvil");
@@ -166,6 +177,8 @@ btnConnect.addEventListener('click', async () => {
 // ────────────────────────────────────────────────
 // 8. PROCESAMIENTO Y DIBUJO (APRILTAG)
 // ────────────────────────────────────────────────
+log("Cargando app.js... 8");
+
 function mostrarVideo(stream) {
     log("Asignando stream al elemento de video...");
     videoElement.srcObject = stream;
@@ -325,6 +338,8 @@ function dibujarDetecciones(detections) {
 // ────────────────────────────────────────────────
 // 9. FUNCIONES AUXILIARES
 // ────────────────────────────────────────────────
+log("Cargando app.js... 9");
+
 function revisarUrlParaConexion() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('connect');
