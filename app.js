@@ -358,6 +358,9 @@ function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
 
 //const socket = new WebSocket('ws://192.168.1.37:81');
 //const socket = new WebSocket('ws://robot.local:81');
+
+log("Iniciando conexión WebSocket con el robot...");
+
 const socket = new WebSocket('ws://10.183.129.72:81');
 
 log("Intentando conectar al robot en dirección ws://10.183.129.72:81... (esto puede tardar unos segundos)");
