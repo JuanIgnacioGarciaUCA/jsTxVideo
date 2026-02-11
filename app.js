@@ -9,6 +9,9 @@
 // ────────────────────────────────────────────────
 log("Cargando app.js... 1");
 
+document.body.appendChild(logArea);
+
+
 const logArea = document.createElement('div');
 Object.assign(logArea.style, {
     background: 'rgba(0, 0, 0, 0.8)',
@@ -27,7 +30,6 @@ Object.assign(logArea.style, {
     pointerEvents: 'none' // Para que no bloquee clics
 });
 
-document.body.appendChild(logArea);
 
 
 function log(msg) {
