@@ -60,7 +60,7 @@ Object.assign(logArea.style, {
     fontSize: '11px',
     padding: '10px',
     //height: '100px',
-    overflowY: 'scroll',
+    //overflowY: 'scroll',
     width: '100%',
     //position: 'fixed',
     bottom: '0',
@@ -357,7 +357,8 @@ function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
 //////////////////////////////////////
 
 //const socket = new WebSocket('ws://192.168.1.37:81');
-const socket = new WebSocket('ws://robot.local:81');
+//const socket = new WebSocket('ws://robot.local:81');
+const socket = new WebSocket('ws://10.183.129.72:81');
 
 
 socket.onopen = (event) => {
