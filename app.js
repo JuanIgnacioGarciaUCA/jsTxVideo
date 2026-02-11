@@ -3,7 +3,39 @@
  * Funcionalidades: PeerJS (P2P), QR Code, Stealth Mode, AprilTag (tag16h5)
  */
 
-log("Cargando app.js... 0");
+
+// ────────────────────────────────────────────────
+// 1. SISTEMA DE LOGS EN PANTALLA
+// ────────────────────────────────────────────────
+log("Cargando app.js... 1");
+
+const logArea = document.createElement('div');
+Object.assign(logArea.style, {
+    background: 'rgba(0, 0, 0, 0.8)',
+    color: '#0f0',
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    padding: '10px',
+    //height: '100px',
+    //overflowY: 'scroll',
+    width: '100%',
+    //position: 'fixed',
+    bottom: '0',
+    left: '0',
+    zIndex: '10001',
+    boxSizing: 'border-box',
+    pointerEvents: 'none' // Para que no bloquee clics
+});
+
+document.body.appendChild(logArea);
+
+
+function log(msg) {
+    const now = new Date().toLocaleTimeString();
+    logArea.innerHTML += `[${now}] ${msg}<br>`;
+    logArea.scrollTop = logArea.scrollHeight;
+    console.log("[jsTxVideo]", msg);
+}
 
 const detectorWorker = new Worker('worker.js');
 let detectorReady = false; // El worker nos avisará cuando esté listo
@@ -50,38 +82,7 @@ detectorWorker.onmessage = (e) => {
 };*/
 
 
-// ────────────────────────────────────────────────
-// 1. SISTEMA DE LOGS EN PANTALLA
-// ────────────────────────────────────────────────
-log("Cargando app.js... 1");
 
-const logArea = document.createElement('div');
-Object.assign(logArea.style, {
-    background: 'rgba(0, 0, 0, 0.8)',
-    color: '#0f0',
-    fontFamily: 'monospace',
-    fontSize: '11px',
-    padding: '10px',
-    //height: '100px',
-    //overflowY: 'scroll',
-    width: '100%',
-    //position: 'fixed',
-    bottom: '0',
-    left: '0',
-    zIndex: '10001',
-    boxSizing: 'border-box',
-    pointerEvents: 'none' // Para que no bloquee clics
-});
-
-document.body.appendChild(logArea);
-
-
-function log(msg) {
-    const now = new Date().toLocaleTimeString();
-    logArea.innerHTML += `[${now}] ${msg}<br>`;
-    logArea.scrollTop = logArea.scrollHeight;
-    console.log("[jsTxVideo]", msg);
-}
 
 // ────────────────────────────────────────────────
 // 2. REFERENCIAS DOM
