@@ -360,7 +360,7 @@ function calcularDistancia(ladoRealMeters, ladoPixeles, focalLength) {
 //const socket = new WebSocket('ws://robot.local:81');
 const socket = new WebSocket('ws://10.183.129.72:81');
 
-
+log("Intentando conectar al robot en dirección ws://10.183.129.72:81... (esto puede tardar unos segundos)");
 socket.onopen = (event) => {
     log("✅ Conectado al Robot con éxito");
     // Aquí puedes cambiar el color de un botón o activar el control
