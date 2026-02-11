@@ -26,7 +26,7 @@
     <button id="btnStealth" class="btn-stealth" style="background:#444; color:white;">MODO AHORRO (PANTALLA NEGRA)</button>
 
     <header>
-        <h1>jsTxVideo.Cam 3</h1>
+        <h1>jsTxVideo.Cam 4</h1>
     </header>
 
     <div class="container">
@@ -183,7 +183,7 @@ peer.on('call', call => {
 function generarQR(id) {
     qrContainer.innerHTML = "";
     //const url = `${window.location.origin}${window.location.pathname}?connect=${id}`;
-    const url = `${window.location.origin}/?connect=${id}`;
+    const url = `${window.location.origin}/jsTxVideo/?connect=${id}`;
     new QRCode(qrContainer, { text: url, width: 150, height: 150 });
 }
 
